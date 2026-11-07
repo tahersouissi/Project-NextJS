@@ -1,0 +1,4424 @@
+From 059bf0f3440b10aa259aeee63ba9bb15434cc01a Mon Sep 17 00:00:00 2001
+From: Chifa-Ben-Ghozzi <chifabenghozzi906@gmail.com>
+Date: Sat, 31 Oct 2026 21:10:27 +0000
+Subject: [PATCH] mongo db
+
+---
+ .env.example                                  |   7 +-
+ README.md                                     |  15 +-
+ package-lock.json                             | 243 +++--
+ package.json                                  |   6 +-
+ src/app/api/admin/bug-reports/[id]/route.ts   |  16 +-
+ src/app/api/admin/bug-reports/route.ts        |  10 +-
+ src/app/api/admin/bug-reports/stats/route.ts  |  22 +-
+ .../api/admin/generate-reset-link/route.ts    |  10 +-
+ src/app/api/admin/notify-all/route.ts         |  14 +-
+ src/app/api/admin/notify-user/route.ts        |   4 +-
+ src/app/api/admin/reclamations/[id]/route.ts  |  10 +-
+ src/app/api/admin/reclamations/route.ts       |   6 +-
+ src/app/api/admin/reports/[id]/route.ts       |  14 +-
+ src/app/api/admin/reports/route.ts            |  10 +-
+ src/app/api/admin/reports/stats/route.ts      |  28 +-
+ .../api/admin/reviews/[id]/approve/route.ts   |   4 +-
+ src/app/api/admin/reviews/[id]/route.ts       |   4 +-
+ src/app/api/admin/reviews/route.ts            |   6 +-
+ src/app/api/admin/stats/route.ts              |  14 +-
+ src/app/api/admin/users/[id]/route.ts         |   8 +-
+ src/app/api/admin/users/route.ts              |   8 +-
+ src/app/api/associated-people/route.ts        |  14 +-
+ src/app/api/auth/check-reset-token/route.ts   |   6 +-
+ src/app/api/auth/logout/route.ts              |   4 +-
+ src/app/api/auth/resend-verification/route.ts |  12 +-
+ src/app/api/auth/reset-password/route.ts      |  24 +-
+ src/app/api/auth/verify-email/route.ts        |  16 +-
+ src/app/api/bug-reports/route.ts              |  10 +-
+ src/app/api/contacts/[id]/accept/route.ts     |  16 +-
+ src/app/api/contacts/[id]/route.ts            |  20 +-
+ src/app/api/contacts/route.ts                 |  16 +-
+ src/app/api/driver-offers/[id]/route.ts       |  14 +-
+ src/app/api/driver-offers/route.ts            |  16 +-
+ .../forum/messages/[id]/reactions/route.ts    |  14 +-
+ src/app/api/forum/messages/[id]/route.ts      |  10 +-
+ src/app/api/forum/messages/route.ts           |  16 +-
+ src/app/api/login/route.ts                    |   6 +-
+ src/app/api/notifications/route.ts            |  10 +-
+ src/app/api/push-subscription/route.ts        |   8 +-
+ src/app/api/reclamations/[id]/route.ts        |  18 +-
+ src/app/api/reclamations/route.ts             |  14 +-
+ src/app/api/register/route.ts                 |  30 +-
+ src/app/api/reports/route.ts                  |  18 +-
+ src/app/api/reviews/route.ts                  |  18 +-
+ src/app/api/ride-history/route.ts             |   6 +-
+ src/app/api/rides/[id]/accept/route.ts        |  24 +-
+ src/app/api/rides/[id]/canceloffer/route.ts   |  20 +-
+ src/app/api/rides/[id]/cancelrequest/route.ts |  16 +-
+ src/app/api/rides/[id]/edit/route.ts          |  10 +-
+ src/app/api/rides/[id]/finish/route.ts        |  16 +-
+ src/app/api/rides/[id]/notes/route.ts         |  34 +-
+ src/app/api/rides/[id]/route.ts               |  10 +-
+ src/app/api/rides/route.ts                    |  12 +-
+ src/app/api/suggested-contacts/route.ts       |  10 +-
+ src/app/api/user-data/create-ride/route.ts    |   6 +-
+ src/app/api/user-data/dashboard/route.ts      |  12 +-
+ src/app/api/user-data/edit-ride/route.ts      |   6 +-
+ src/app/api/user-data/profile/route.ts        |  10 +-
+ src/app/api/user-data/ride-details/route.ts   |  10 +-
+ .../api/users/[id]/change-password/route.ts   |  10 +-
+ src/app/api/users/[id]/push-devices/route.ts  |   6 +-
+ .../api/users/[id]/push-preference/route.ts   |  10 +-
+ src/app/api/users/[id]/route.ts               |  34 +-
+ src/app/api/users/[id]/stats/route.ts         |  10 +-
+ src/app/api/users/search/route.ts             |   4 +-
+ src/app/api/vehicles/[id]/route.ts            |  10 +-
+ src/app/api/vehicles/route.ts                 |  10 +-
+ src/components/MultiStepRegisterForm.tsx      |  20 +-
+ src/components/WelcomePage.tsx                |  20 +-
+ src/lib/auth.ts                               |  13 +-
+ src/lib/contactService.ts                     |  10 +-
+ src/lib/db.ts                                 | 953 +++++++++++++++++-
+ src/lib/pushNotificationService.ts            |   8 +-
+ 73 files changed, 1544 insertions(+), 565 deletions(-)
+
+diff --git a/.env.example b/.env.example
+index 158df7e..38249c3 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1,7 +1,6 @@
+-# Supabase project settings
+-NEXT_PUBLIC_SUPABASE_URL=
+-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+-SUPABASE_SERVICE_ROLE_KEY=
++# MongoDB connection
++MONGODB_URI=
++MONGODB_DB=ride_share
+ 
+ # Application secrets: generate separate random values for each
+ NEXTAUTH_SECRET=
+diff --git a/README.md b/README.md
+index 3769854..f96a280 100644
+--- a/README.md
++++ b/README.md
+@@ -41,7 +41,7 @@ RideShare is a modern, user-friendly web application that facilitates ride-shari
+ - [React 18](https://reactjs.org/)
+ - [TypeScript](https://www.typescriptlang.org/)
+ - [Tailwind CSS](https://tailwindcss.com/)
+-- [Supabase](https://supabase.io/) for database
++- [MongoDB](https://www.mongodb.com/) for database
+ - [MapTiler](https://www.maptiler.com/) for map services
+ - [Framer Motion](https://www.framer.com/motion/) for animations
+ - [Lucide React](https://lucide.dev/) for icons
+@@ -54,7 +54,7 @@ RideShare is a modern, user-friendly web application that facilitates ride-shari
+ 
+ - Node.js 18.18 or later (Node.js 20 LTS recommended)
+ - npm
+-- A Supabase project
++- A MongoDB database (local or MongoDB Atlas)
+ 
+ ### Installation
+ 
+@@ -79,10 +79,11 @@ RideShare is a modern, user-friendly web application that facilitates ride-shari
+ 
+    Fill in the values using your own service accounts:
+ 
+-   - **Required:** `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXTAUTH_SECRET`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `GMAIL_USER`, and `GMAIL_PASS`.
++   - **Required:** `MONGODB_URI`, `NEXTAUTH_SECRET`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL`, `GMAIL_USER`, and `GMAIL_PASS`.
++   - `MONGODB_DB` selects the database name and defaults to `ride_share`.
++   - Set `MONGODB_URI` to your MongoDB connection string (for example, `mongodb://127.0.0.1:27017` locally). Keep Atlas credentials private.
+    - **Optional integrations:** `NEXT_PUBLIC_MAPTILER_KEY` enables maps; the VAPID keys enable push notifications; `NEXT_PUBLIC_CONTACT_EMAIL` sets the contact address; `GEMINI_API_KEY` enables AI-powered chatbot replies (`GEMINI_MODEL` defaults to `gemini-2.5-flash`).
+    - Set `ADMIN_PASSWORD` if you need to use the admin dashboard.
+-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` is used by the welcome page. It is a public client key; never expose the service-role key.
+ 
+    Generate separate random values for `NEXTAUTH_SECRET` and `JWT_SECRET` with:
+ 
+@@ -92,9 +93,7 @@ RideShare is a modern, user-friendly web application that facilitates ride-shari
+ 
+    Set `NEXT_PUBLIC_APP_URL` to `https://localhost:3000` for local development. Use a Gmail App Password for `GMAIL_PASS`. Never commit `.env.local` or share real credentials in the repository; each developer should use their own credentials.
+ 
+-4. In the Supabase SQL editor, run [`database.sql`](./database.sql) against your development Supabase project to create or update the required tables and database functions. Avoid running it against a production database when setting up locally.
+-
+-   If the database was already initialized, run the updated SQL script to add the `reclamations` table.
++4. The application creates the required MongoDB indexes when it first connects. The legacy [`database.sql`](./database.sql) file is not used by the MongoDB-backed application. Existing Supabase data is not copied automatically.
+ 
+ 5. Start the development server:
+ 
+@@ -118,7 +117,7 @@ The production server starts at `http://localhost:3000`. The repository does not
+ 
+ Push the application source, public assets, `database.sql`, `package.json`, `package-lock.json`, `.env.example`, and this README. The lockfile keeps dependency installs consistent. Do not push `.env.local`, real API keys/passwords, `node_modules`, `.next`, or generated local certificates. These local files are excluded by `.gitignore`.
+ 
+-After cloning and pulling the shared branch, each teammate should follow the installation steps above and configure their own `.env.local` and Supabase development project.
++After cloning and pulling the shared branch, each teammate should follow the installation steps above and configure their own `.env.local` and MongoDB database.
+ 
+ ## Usage
+ 
+diff --git a/package-lock.json b/package-lock.json
+index db8aec3..7b9ed60 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -22,7 +22,6 @@
+         "@radix-ui/react-slot": "^1.2.0",
+         "@radix-ui/react-switch": "^1.1.3",
+         "@radix-ui/react-tabs": "^1.1.2",
+-        "@supabase/supabase-js": "^2.46.1",
+         "@types/nodemailer": "^6.4.16",
+         "@types/ua-parser-js": "^0.7.39",
+         "@vercel/speed-insights": "^1.2.0",
+@@ -36,6 +35,7 @@
+         "lodash": "^4.17.21",
+         "lucide-react": "^0.453.0",
+         "maplibre-gl": "^2.4.0",
++        "mongodb": "^6.12.0",
+         "next": "^15.0.3",
+         "next-auth": "^4.24.11",
+         "next-themes": "^0.4.6",
+@@ -856,6 +856,15 @@
+         "node": ">=6.0.0"
+       }
+     },
++    "node_modules/@mongodb-js/saslprep": {
++      "version": "1.6.1",
++      "resolved": "https://registry.npmjs.org/@mongodb-js/saslprep/-/saslprep-1.6.1.tgz",
++      "integrity": "sha512-D4CQtk9IwjCLAvCf1xvHEod3960q8XMUzfmdRU9qjUNlHnesGuTOvJcOTaPm9koZ1caUKA2aTbszZiAkcmSgmg==",
++      "license": "MIT",
++      "dependencies": {
++        "sparse-bitfield": "^3.0.3"
++      }
++    },
+     "node_modules/@napi-rs/wasm-runtime": {
+       "version": "0.2.7",
+       "resolved": "https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-0.2.7.tgz",
+@@ -2454,80 +2463,6 @@
+       "dev": true,
+       "license": "MIT"
+     },
+-    "node_modules/@supabase/auth-js": {
+-      "version": "2.67.3",
+-      "resolved": "https://registry.npmjs.org/@supabase/auth-js/-/auth-js-2.67.3.tgz",
+-      "integrity": "sha512-NJDaW8yXs49xMvWVOkSIr8j46jf+tYHV0wHhrwOaLLMZSFO4g6kKAf+MfzQ2RaD06OCUkUHIzctLAxjTgEVpzw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@supabase/node-fetch": "^2.6.14"
+-      }
+-    },
+-    "node_modules/@supabase/functions-js": {
+-      "version": "2.4.4",
+-      "resolved": "https://registry.npmjs.org/@supabase/functions-js/-/functions-js-2.4.4.tgz",
+-      "integrity": "sha512-WL2p6r4AXNGwop7iwvul2BvOtuJ1YQy8EbOd0dhG1oN1q8el/BIRSFCFnWAMM/vJJlHWLi4ad22sKbKr9mvjoA==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@supabase/node-fetch": "^2.6.14"
+-      }
+-    },
+-    "node_modules/@supabase/node-fetch": {
+-      "version": "2.6.15",
+-      "resolved": "https://registry.npmjs.org/@supabase/node-fetch/-/node-fetch-2.6.15.tgz",
+-      "integrity": "sha512-1ibVeYUacxWYi9i0cf5efil6adJ9WRyZBLivgjs+AUpewx1F3xPi7gLgaASI2SmIQxPoCEjAsLAzKPgMJVgOUQ==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "whatwg-url": "^5.0.0"
+-      },
+-      "engines": {
+-        "node": "4.x || >=6.0.0"
+-      }
+-    },
+-    "node_modules/@supabase/postgrest-js": {
+-      "version": "1.17.7",
+-      "resolved": "https://registry.npmjs.org/@supabase/postgrest-js/-/postgrest-js-1.17.7.tgz",
+-      "integrity": "sha512-aOzOYaTADm/dVTNksyqv9KsbhVa1gHz1Hoxb2ZEF2Ed9H7qlWOfptECQWmkEmrrFjtNaiPrgiSaPECvzI/seDA==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@supabase/node-fetch": "^2.6.14"
+-      }
+-    },
+-    "node_modules/@supabase/realtime-js": {
+-      "version": "2.11.2",
+-      "resolved": "https://registry.npmjs.org/@supabase/realtime-js/-/realtime-js-2.11.2.tgz",
+-      "integrity": "sha512-u/XeuL2Y0QEhXSoIPZZwR6wMXgB+RQbJzG9VErA3VghVt7uRfSVsjeqd7m5GhX3JR6dM/WRmLbVR8URpDWG4+w==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@supabase/node-fetch": "^2.6.14",
+-        "@types/phoenix": "^1.5.4",
+-        "@types/ws": "^8.5.10",
+-        "ws": "^8.18.0"
+-      }
+-    },
+-    "node_modules/@supabase/storage-js": {
+-      "version": "2.7.1",
+-      "resolved": "https://registry.npmjs.org/@supabase/storage-js/-/storage-js-2.7.1.tgz",
+-      "integrity": "sha512-asYHcyDR1fKqrMpytAS1zjyEfvxuOIp1CIXX7ji4lHHcJKqyk+sLl/Vxgm4sN6u8zvuUtae9e4kDxQP2qrwWBA==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@supabase/node-fetch": "^2.6.14"
+-      }
+-    },
+-    "node_modules/@supabase/supabase-js": {
+-      "version": "2.47.10",
+-      "resolved": "https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.47.10.tgz",
+-      "integrity": "sha512-vJfPF820Ho5WILYHfKiBykDQ1SB9odTHrRZ0JxHfuLMC8GRvv21YLkUZQK7/rSVCkLvD6/ZwMWaOAfdUd//guw==",
+-      "license": "MIT",
+-      "dependencies": {
+-        "@supabase/auth-js": "2.67.3",
+-        "@supabase/functions-js": "2.4.4",
+-        "@supabase/node-fetch": "2.6.15",
+-        "@supabase/postgrest-js": "1.17.7",
+-        "@supabase/realtime-js": "2.11.2",
+-        "@supabase/storage-js": "2.7.1"
+-      }
+-    },
+     "node_modules/@swc/counter": {
+       "version": "0.1.3",
+       "resolved": "https://registry.npmjs.org/@swc/counter/-/counter-0.1.3.tgz",
+@@ -2635,12 +2570,6 @@
+       "integrity": "sha512-j3pOPiEcWZ34R6a6mN07mUkM4o4Lwf6hPNt8eilOeZhTFbxFXmKhvXl9Y28jotFPaI1bpPDJsbCprUoNke6OrA==",
+       "license": "MIT"
+     },
+-    "node_modules/@types/phoenix": {
+-      "version": "1.6.6",
+-      "resolved": "https://registry.npmjs.org/@types/phoenix/-/phoenix-1.6.6.tgz",
+-      "integrity": "sha512-PIzZZlEppgrpoT2QgbnDU+MMzuR6BbCjllj0bM70lWoejMeNJAxCchxnv7J3XFkI8MpygtRpzXrIlmWUBclP5A==",
+-      "license": "MIT"
+-    },
+     "node_modules/@types/prop-types": {
+       "version": "15.7.14",
+       "resolved": "https://registry.npmjs.org/@types/prop-types/-/prop-types-15.7.14.tgz",
+@@ -2712,13 +2641,19 @@
+         "@types/node": "*"
+       }
+     },
+-    "node_modules/@types/ws": {
+-      "version": "8.5.13",
+-      "resolved": "https://registry.npmjs.org/@types/ws/-/ws-8.5.13.tgz",
+-      "integrity": "sha512-osM/gWBTPKgHV8XkTunnegTRIsvF6owmf5w+JtAfOw472dptdm0dlGv4xCt6GwQRcC2XVOvvRE/0bAoQcL2QkA==",
++    "node_modules/@types/webidl-conversions": {
++      "version": "7.0.3",
++      "resolved": "https://registry.npmjs.org/@types/webidl-conversions/-/webidl-conversions-7.0.3.tgz",
++      "integrity": "sha512-CiJJvcRtIgzadHCYXw7dqEnMNRjhGZlYK05Mj9OyktqV8uVT8fD2BFOB7S1uwBE3Kj2Z+4UyPmFw/Ixgw/LAlA==",
++      "license": "MIT"
++    },
++    "node_modules/@types/whatwg-url": {
++      "version": "11.0.5",
++      "resolved": "https://registry.npmjs.org/@types/whatwg-url/-/whatwg-url-11.0.5.tgz",
++      "integrity": "sha512-coYR071JRaHa+xoEvvYqvnIHaVqaYrLPbsufM9BF63HkwI5Lgmy2QR8Q5K/lYDYo5AK82wOvSOS0UsLTpTG7uQ==",
+       "license": "MIT",
+       "dependencies": {
+-        "@types/node": "*"
++        "@types/webidl-conversions": "*"
+       }
+     },
+     "node_modules/@typescript-eslint/eslint-plugin": {
+@@ -4014,6 +3949,15 @@
+         "node": ">=8"
+       }
+     },
++    "node_modules/bson": {
++      "version": "6.10.4",
++      "resolved": "https://registry.npmjs.org/bson/-/bson-6.10.4.tgz",
++      "integrity": "sha512-WIsKqkSC0ABoBJuT1LEX+2HEvNmNKKgnTAyd0fL8qzK4SH2i9NXg+t08YtdZp/V9IZ33cxe3iV4yM0qg8lMQng==",
++      "license": "Apache-2.0",
++      "engines": {
++        "node": ">=16.20.1"
++      }
++    },
+     "node_modules/buffer-equal-constant-time": {
+       "version": "1.0.1",
+       "resolved": "https://registry.npmjs.org/buffer-equal-constant-time/-/buffer-equal-constant-time-1.0.1.tgz",
+@@ -6836,6 +6780,12 @@
+         "node": ">= 0.4"
+       }
+     },
++    "node_modules/memory-pager": {
++      "version": "1.5.0",
++      "resolved": "https://registry.npmjs.org/memory-pager/-/memory-pager-1.5.0.tgz",
++      "integrity": "sha512-ZS4Bp4r/Zoeq6+NLJpP+0Zzm0pR8whtGPf1XExKLJBAczGMnSi3It14OiNCStjQjM6NU1okjQGSxgEZN8eBYKg==",
++      "license": "MIT"
++    },
+     "node_modules/merge2": {
+       "version": "1.4.1",
+       "resolved": "https://registry.npmjs.org/merge2/-/merge2-1.4.1.tgz",
+@@ -6952,6 +6902,96 @@
+         "node": ">=10"
+       }
+     },
++    "node_modules/mongodb": {
++      "version": "6.21.0",
++      "resolved": "https://registry.npmjs.org/mongodb/-/mongodb-6.21.0.tgz",
++      "integrity": "sha512-URyb/VXMjJ4da46OeSXg+puO39XH9DeQpWCslifrRn9JWugy0D+DvvBvkm2WxmHe61O/H19JM66p1z7RHVkZ6A==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@mongodb-js/saslprep": "^1.3.0",
++        "bson": "^6.10.4",
++        "mongodb-connection-string-url": "^3.0.2"
++      },
++      "engines": {
++        "node": ">=16.20.1"
++      },
++      "peerDependencies": {
++        "@aws-sdk/credential-providers": "^3.188.0",
++        "@mongodb-js/zstd": "^1.1.0 || ^2.0.0",
++        "gcp-metadata": "^5.2.0",
++        "kerberos": "^2.0.1",
++        "mongodb-client-encryption": ">=6.0.0 <7",
++        "snappy": "^7.3.2",
++        "socks": "^2.7.1"
++      },
++      "peerDependenciesMeta": {
++        "@aws-sdk/credential-providers": {
++          "optional": true
++        },
++        "@mongodb-js/zstd": {
++          "optional": true
++        },
++        "gcp-metadata": {
++          "optional": true
++        },
++        "kerberos": {
++          "optional": true
++        },
++        "mongodb-client-encryption": {
++          "optional": true
++        },
++        "snappy": {
++          "optional": true
++        },
++        "socks": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/mongodb-connection-string-url": {
++      "version": "3.0.2",
++      "resolved": "https://registry.npmjs.org/mongodb-connection-string-url/-/mongodb-connection-string-url-3.0.2.tgz",
++      "integrity": "sha512-rMO7CGo/9BFwyZABcKAWL8UJwH/Kc2x0g72uhDWzG48URRax5TCIcJ7Rc3RZqffZzO/Gwff/jyKwCU9TN8gehA==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@types/whatwg-url": "^11.0.2",
++        "whatwg-url": "^14.1.0 || ^13.0.0"
++      }
++    },
++    "node_modules/mongodb-connection-string-url/node_modules/tr46": {
++      "version": "5.1.1",
++      "resolved": "https://registry.npmjs.org/tr46/-/tr46-5.1.1.tgz",
++      "integrity": "sha512-hdF5ZgjTqgAntKkklYw0R03MG2x/bSzTtkxmIRw/sTNV8YXsCJ1tfLAX23lhxhHJlEf3CRCOCGGWw3vI3GaSPw==",
++      "license": "MIT",
++      "dependencies": {
++        "punycode": "^2.3.1"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/mongodb-connection-string-url/node_modules/webidl-conversions": {
++      "version": "7.0.0",
++      "resolved": "https://registry.npmjs.org/webidl-conversions/-/webidl-conversions-7.0.0.tgz",
++      "integrity": "sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==",
++      "license": "BSD-2-Clause",
++      "engines": {
++        "node": ">=12"
++      }
++    },
++    "node_modules/mongodb-connection-string-url/node_modules/whatwg-url": {
++      "version": "14.2.0",
++      "resolved": "https://registry.npmjs.org/whatwg-url/-/whatwg-url-14.2.0.tgz",
++      "integrity": "sha512-De72GdQZzNTUBBChsXueQUnPKDkg/5A5zp7pFDuQAj5UFoENpiACU0wlCvzpAGnTkj++ihpKwKyYewn/XNUbKw==",
++      "license": "MIT",
++      "dependencies": {
++        "tr46": "^5.1.0",
++        "webidl-conversions": "^7.0.0"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
+     "node_modules/ms": {
+       "version": "2.1.3",
+       "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+@@ -7828,7 +7868,6 @@
+       "version": "2.3.1",
+       "resolved": "https://registry.npmjs.org/punycode/-/punycode-2.3.1.tgz",
+       "integrity": "sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=6"
+@@ -8496,6 +8535,15 @@
+         "node": ">=0.10.0"
+       }
+     },
++    "node_modules/sparse-bitfield": {
++      "version": "3.0.3",
++      "resolved": "https://registry.npmjs.org/sparse-bitfield/-/sparse-bitfield-3.0.3.tgz",
++      "integrity": "sha512-kvzhi7vqKTfkh0PZU+2D2PIllw2ymqJKujUcyPMd9Y75Nv4nPbGJZXNhxsgdQab2BmlDct1YnfQCguEvHr7VsQ==",
++      "license": "MIT",
++      "dependencies": {
++        "memory-pager": "^1.0.2"
++      }
++    },
+     "node_modules/stable-hash": {
+       "version": "0.0.5",
+       "resolved": "https://registry.npmjs.org/stable-hash/-/stable-hash-0.0.5.tgz",
+@@ -9695,27 +9743,6 @@
+       "integrity": "sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==",
+       "license": "ISC"
+     },
+-    "node_modules/ws": {
+-      "version": "8.18.0",
+-      "resolved": "https://registry.npmjs.org/ws/-/ws-8.18.0.tgz",
+-      "integrity": "sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==",
+-      "license": "MIT",
+-      "engines": {
+-        "node": ">=10.0.0"
+-      },
+-      "peerDependencies": {
+-        "bufferutil": "^4.0.1",
+-        "utf-8-validate": ">=5.0.2"
+-      },
+-      "peerDependenciesMeta": {
+-        "bufferutil": {
+-          "optional": true
+-        },
+-        "utf-8-validate": {
+-          "optional": true
+-        }
+-      }
+-    },
+     "node_modules/yallist": {
+       "version": "4.0.0",
+       "resolved": "https://registry.npmjs.org/yallist/-/yallist-4.0.0.tgz",
+diff --git a/package.json b/package.json
+index 90c0282..99d1853 100644
+--- a/package.json
++++ b/package.json
+@@ -6,8 +6,8 @@
+     "dev": "next dev --experimental-https",
+     "build": "next build",
+     "start": "next start",
+-    "lint": "eslint 'src/**/*.{js,jsx,ts,tsx}' --config .eslintrc.json",
+-    "lint:fix": "eslint --fix 'src/**/*.{js,jsx,ts,tsx}' --config .eslintrc.json",
++    "lint": "eslint src --ext .js,.jsx,.ts,.tsx --config .eslintrc.json",
++    "lint:fix": "eslint --fix src --ext .js,.jsx,.ts,.tsx --config .eslintrc.json",
+     "npminstall": "npm install"
+   },
+   "dependencies": {
+@@ -25,7 +25,6 @@
+     "@radix-ui/react-slot": "^1.2.0",
+     "@radix-ui/react-switch": "^1.1.3",
+     "@radix-ui/react-tabs": "^1.1.2",
+-    "@supabase/supabase-js": "^2.46.1",
+     "@types/nodemailer": "^6.4.16",
+     "@types/ua-parser-js": "^0.7.39",
+     "@vercel/speed-insights": "^1.2.0",
+@@ -39,6 +38,7 @@
+     "lodash": "^4.17.21",
+     "lucide-react": "^0.453.0",
+     "maplibre-gl": "^2.4.0",
++    "mongodb": "^6.12.0",
+     "next": "^15.0.3",
+     "next-auth": "^4.24.11",
+     "next-themes": "^0.4.6",
+diff --git a/src/app/api/admin/bug-reports/[id]/route.ts b/src/app/api/admin/bug-reports/[id]/route.ts
+index c54dba7..2e26c3a 100644
+--- a/src/app/api/admin/bug-reports/[id]/route.ts
++++ b/src/app/api/admin/bug-reports/[id]/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+   try {
+@@ -16,8 +16,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+     }
+ 
+     // Check if bug report exists
+-    const { data: existingReport, error: reportError } = await supabase
+-      .from("bug_reports")
++    const { data: existingReport, error: reportError } = await database
++      .collection("bug_reports")
+       .select("*")
+       .eq("id", bugReportId)
+       .single();
+@@ -27,8 +27,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+     }
+ 
+     // Update bug report
+-    const { data: updatedReport, error } = await supabase
+-      .from("bug_reports")
++    const { data: updatedReport, error } = await database
++      .collection("bug_reports")
+       .update({
+         status,
+         admin_notes: adminNotes,
+@@ -44,7 +44,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+ 
+     // Notify user about the status change
+ 
+-    await supabase.from("notifications").insert({
++    await database.collection("notifications").insert({
+       user_id: existingReport.user_id,
+       message: `Your bug report "${existingReport.title}" has been updated to ${status}`,
+       type: "bug_report_update",
+@@ -63,8 +63,8 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
+     const bugReportId = params.id;
+ 
+     // Get bug report details
+-    const { data: bugReport, error } = await supabase
+-      .from("bug_reports")
++    const { data: bugReport, error } = await database
++      .collection("bug_reports")
+       .select(
+         `
+         *,
+diff --git a/src/app/api/admin/bug-reports/route.ts b/src/app/api/admin/bug-reports/route.ts
+index 3d7310e..b414115 100644
+--- a/src/app/api/admin/bug-reports/route.ts
++++ b/src/app/api/admin/bug-reports/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function GET(request: Request) {
+   try {
+@@ -12,8 +12,8 @@ export async function GET(request: Request) {
+     const offset = (page - 1) * pageSize;
+ 
+     // Build query
+-    let query = supabase
+-      .from("bug_reports")
++    let query = database
++      .collection("bug_reports")
+       .select(
+         `
+         *,
+@@ -28,8 +28,8 @@ export async function GET(request: Request) {
+     }
+ 
+     // Get total count for pagination
+-    const { count: totalCount, error: countError } = await supabase
+-      .from("bug_reports")
++    const { count: totalCount, error: countError } = await database
++      .collection("bug_reports")
+       .select("*", { count: "exact" });
+ 
+     if (countError) {
+diff --git a/src/app/api/admin/bug-reports/stats/route.ts b/src/app/api/admin/bug-reports/stats/route.ts
+index 437547a..1a72fdb 100644
+--- a/src/app/api/admin/bug-reports/stats/route.ts
++++ b/src/app/api/admin/bug-reports/stats/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+@@ -8,8 +8,8 @@ export const revalidate = 0;
+ export async function GET() {
+   try {
+     // Get total bug reports count
+-    const { count: totalBugs, error: totalError } = await supabase
+-      .from("bug_reports")
++    const { count: totalBugs, error: totalError } = await database
++      .collection("bug_reports")
+       .select("*", { count: "exact" });
+ 
+     if (totalError) {
+@@ -29,8 +29,8 @@ export async function GET() {
+     }
+ 
+     // Get open bugs count (new + in_progress)
+-    const { count: openBugs, error: openError } = await supabase
+-      .from("bug_reports")
++    const { count: openBugs, error: openError } = await database
++      .collection("bug_reports")
+       .select("*", { count: "exact" })
+       .in("status", ["new", "in_progress"]);
+ 
+@@ -51,14 +51,14 @@ export async function GET() {
+     }
+ 
+     // Get bugs by severity
+-    const { data: severityData, error: severityError } = await supabase.rpc(
++    const { data: severityData, error: severityError } = await database.rpc(
+       "count_bug_reports_by_severity"
+     );
+ 
+     if (severityError) {
+       // Fallback if RPC function doesn't exist
+-      const { data: fallbackSeverityData, error: fallbackError } = await supabase
+-        .from("bug_reports")
++      const { data: fallbackSeverityData, error: fallbackError } = await database
++        .collection("bug_reports")
+         .select("severity");
+ 
+       if (fallbackError) {
+@@ -93,8 +93,8 @@ export async function GET() {
+       }));
+ 
+       // Get bugs by status
+-      const { data: statusData, error: statusError } = await supabase
+-        .from("bug_reports")
++      const { data: statusData, error: statusError } = await database
++        .collection("bug_reports")
+         .select("status");
+ 
+       if (statusError) {
+@@ -148,7 +148,7 @@ export async function GET() {
+     }
+ 
+     // Get bugs by status
+-    const { data: statusData, error: statusError } = await supabase.rpc(
++    const { data: statusData, error: statusError } = await database.rpc(
+       "count_bug_reports_by_status"
+     );
+ 
+diff --git a/src/app/api/admin/generate-reset-link/route.ts b/src/app/api/admin/generate-reset-link/route.ts
+index 3427ac3..5b516ff 100644
+--- a/src/app/api/admin/generate-reset-link/route.ts
++++ b/src/app/api/admin/generate-reset-link/route.ts
+@@ -2,7 +2,7 @@ import crypto from "crypto";
+ 
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function POST(request: Request) {
+   try {
+@@ -13,8 +13,8 @@ export async function POST(request: Request) {
+     }
+ 
+     // Check if the user exists
+-    const { data: user, error: userError } = await supabase
+-      .from("users")
++    const { data: user, error: userError } = await database
++      .collection("users")
+       .select("id, email")
+       .eq("id", userId)
+       .single();
+@@ -29,10 +29,10 @@ export async function POST(request: Request) {
+     expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours for admin-generated links
+ 
+     // Delete any existing tokens for this user
+-    await supabase.from("password_reset_tokens").delete().eq("user_id", userId);
++    await database.collection("password_reset_tokens").delete().eq("user_id", userId);
+ 
+     // Insert the new token
+-    const { error: insertError } = await supabase.from("password_reset_tokens").insert({
++    const { error: insertError } = await database.collection("password_reset_tokens").insert({
+       user_id: userId,
+       token: resetToken,
+       expires_at: expiresAt.toISOString(),
+diff --git a/src/app/api/admin/notify-all/route.ts b/src/app/api/admin/notify-all/route.ts
+index f07898e..72f942d 100644
+--- a/src/app/api/admin/notify-all/route.ts
++++ b/src/app/api/admin/notify-all/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendPushNotification } from "@/lib/pushNotificationService";
+ 
+ export async function POST(request: Request) {
+@@ -8,15 +8,15 @@ export async function POST(request: Request) {
+ 
+   try {
+     // Fetch all users
+-    const { data: users, error: usersError } = await supabase.from("users").select("id");
++    const { data: users, error: usersError } = await database.collection("users").select("id");
+ 
+     if (usersError) {
+       throw usersError;
+     }
+ 
+     // Fetch all push subscriptions
+-    const { data: subscriptions, error: subscriptionsError } = await supabase
+-      .from("push_subscriptions")
++    const { data: subscriptions, error: subscriptionsError } = await database
++      .collection("push_subscriptions")
+       .select("id, user_id, subscription");
+ 
+     if (subscriptionsError) {
+@@ -37,7 +37,7 @@ export async function POST(request: Request) {
+ 
+     // Remove expired subscriptions
+     if (expiredSubscriptions.length > 0) {
+-      await supabase.from("push_subscriptions").delete().in("id", expiredSubscriptions);
++      await database.collection("push_subscriptions").delete().in("id", expiredSubscriptions);
+     }
+ 
+     // Create notifications in the database
+@@ -48,8 +48,8 @@ export async function POST(request: Request) {
+       related_id: null, // Admin notifications typically don't have a related entity
+     }));
+ 
+-    const { error: notificationsError } = await supabase
+-      .from("notifications")
++    const { error: notificationsError } = await database
++      .collection("notifications")
+       .insert(notifications);
+ 
+     if (notificationsError) {
+diff --git a/src/app/api/admin/notify-user/route.ts b/src/app/api/admin/notify-user/route.ts
+index bac3c6d..3d381da 100644
+--- a/src/app/api/admin/notify-user/route.ts
++++ b/src/app/api/admin/notify-user/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ 
+ export async function POST(request: Request) {
+@@ -11,7 +11,7 @@ export async function POST(request: Request) {
+     await sendImmediateNotification(userId, title, body);
+ 
+     // Create a notification in the database
+-    const { error: notificationError } = await supabase.from("notifications").insert({
++    const { error: notificationError } = await database.collection("notifications").insert({
+       user_id: userId,
+       message: `${title}: ${body}`,
+       type: "admin_notification",
+diff --git a/src/app/api/admin/reclamations/[id]/route.ts b/src/app/api/admin/reclamations/[id]/route.ts
+index 0ce028b..57e54fc 100644
+--- a/src/app/api/admin/reclamations/[id]/route.ts
++++ b/src/app/api/admin/reclamations/[id]/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { isReclamationStatus } from "@/lib/reclamation";
+ 
+ type RouteContext = { params: Promise<{ id: string }> };
+@@ -24,8 +24,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
+   }
+ 
+   const { id } = await params;
+-  const { data, error } = await supabase
+-    .from("reclamations")
++  const { data, error } = await database
++    .collection("reclamations")
+     .update({
+       status,
+       admin_notes: typeof adminNotes === "string" ? adminNotes.trim() || null : null,
+@@ -48,8 +48,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
+ 
+ export async function DELETE(_request: Request, { params }: RouteContext) {
+   const { id } = await params;
+-  const { data, error } = await supabase
+-    .from("reclamations")
++  const { data, error } = await database
++    .collection("reclamations")
+     .delete()
+     .eq("id", id)
+     .select("id")
+diff --git a/src/app/api/admin/reclamations/route.ts b/src/app/api/admin/reclamations/route.ts
+index 96f97f1..f335494 100644
+--- a/src/app/api/admin/reclamations/route.ts
++++ b/src/app/api/admin/reclamations/route.ts
+@@ -1,11 +1,11 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function GET(request: Request) {
+   const status = new URL(request.url).searchParams.get("status");
+-  let query = supabase
+-    .from("reclamations")
++  let query = database
++    .collection("reclamations")
+     .select("*, user:user_id(name,email), ride:ride_id(from_location,to_location,time)")
+     .order("created_at", { ascending: false });
+ 
+diff --git a/src/app/api/admin/reports/[id]/route.ts b/src/app/api/admin/reports/[id]/route.ts
+index f9cb8bd..dab8f98 100644
+--- a/src/app/api/admin/reports/[id]/route.ts
++++ b/src/app/api/admin/reports/[id]/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+   try {
+@@ -16,8 +16,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+     }
+ 
+     // Check if report exists
+-    const { data: existingReport, error: reportError } = await supabase
+-      .from("reports")
++    const { data: existingReport, error: reportError } = await database
++      .collection("reports")
+       .select("*")
+       .eq("id", reportId)
+       .single();
+@@ -27,8 +27,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+     }
+ 
+     // Update report
+-    const { data: updatedReport, error } = await supabase
+-      .from("reports")
++    const { data: updatedReport, error } = await database
++      .collection("reports")
+       .update({
+         status,
+         admin_notes: adminNotes,
+@@ -54,8 +54,8 @@ export async function GET(request: Request) {
+     const reportId = url.pathname.split("/").pop(); // Extracting the report ID from the URL
+ 
+     // Get report details
+-    const { data: report, error } = await supabase
+-      .from("reports")
++    const { data: report, error } = await database
++      .collection("reports")
+       .select(
+         `
+         *,
+diff --git a/src/app/api/admin/reports/route.ts b/src/app/api/admin/reports/route.ts
+index dcb2965..e9cb775 100644
+--- a/src/app/api/admin/reports/route.ts
++++ b/src/app/api/admin/reports/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function GET(request: Request) {
+   try {
+@@ -12,8 +12,8 @@ export async function GET(request: Request) {
+     const offset = (page - 1) * pageSize;
+ 
+     // Build query
+-    let query = supabase
+-      .from("reports")
++    let query = database
++      .collection("reports")
+       .select(
+         `
+         *,
+@@ -29,8 +29,8 @@ export async function GET(request: Request) {
+     }
+ 
+     // Get total count for pagination
+-    const { count: totalCount, error: countError } = await supabase
+-      .from("reports")
++    const { count: totalCount, error: countError } = await database
++      .collection("reports")
+       .select("*", { count: "exact" });
+ 
+     if (countError) {
+diff --git a/src/app/api/admin/reports/stats/route.ts b/src/app/api/admin/reports/stats/route.ts
+index 98f5c57..009e3d2 100644
+--- a/src/app/api/admin/reports/stats/route.ts
++++ b/src/app/api/admin/reports/stats/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+@@ -8,8 +8,8 @@ export const revalidate = 0;
+ export async function GET() {
+   try {
+     // Get total reports count
+-    const { count: totalReports, error: totalError } = await supabase
+-      .from("reports")
++    const { count: totalReports, error: totalError } = await database
++      .collection("reports")
+       .select("*", { count: "exact", head: true });
+ 
+     if (totalError) {
+@@ -29,8 +29,8 @@ export async function GET() {
+     }
+ 
+     // Get pending reports count
+-    const { count: pendingReports, error: pendingError } = await supabase
+-      .from("reports")
++    const { count: pendingReports, error: pendingError } = await database
++      .collection("reports")
+       .select("*", { count: "exact", head: true })
+       .eq("status", "pending");
+ 
+@@ -51,12 +51,12 @@ export async function GET() {
+     }
+ 
+     // Get reports by type
+-    const { data: byType, error: typeError } = await supabase.rpc("count_reports_by_type");
++    const { data: byType, error: typeError } = await database.rpc("count_reports_by_type");
+ 
+     if (typeError) {
+       // Fallback if RPC function doesn't exist
+-      const { data: manualTypeCount, error: manualTypeError } = await supabase
+-        .from("reports")
++      const { data: manualTypeCount, error: manualTypeError } = await database
++        .collection("reports")
+         .select("report_type, count")
+         .select("report_type")
+         .order("report_type");
+@@ -94,8 +94,8 @@ export async function GET() {
+       }));
+ 
+       // Get reports by status
+-      const { data: statusData, error: statusError } = await supabase
+-        .from("reports")
++      const { data: statusData, error: statusError } = await database
++        .collection("reports")
+         .select("status");
+ 
+       if (statusError) {
+@@ -131,8 +131,8 @@ export async function GET() {
+       }));
+ 
+       // Get reports by reason
+-      const { data: reasonData, error: reasonError } = await supabase
+-        .from("reports")
++      const { data: reasonData, error: reasonError } = await database
++        .collection("reports")
+         .select("reason");
+ 
+       if (reasonError) {
+@@ -177,7 +177,7 @@ export async function GET() {
+     }
+ 
+     // Get reports by status
+-    const { data: byStatus, error: statusError } = await supabase.rpc("count_reports_by_status");
++    const { data: byStatus, error: statusError } = await database.rpc("count_reports_by_status");
+ 
+     if (statusError) {
+       return NextResponse.json(
+@@ -196,7 +196,7 @@ export async function GET() {
+     }
+ 
+     // Get reports by reason
+-    const { data: byReason, error: reasonError } = await supabase.rpc("count_reports_by_reason");
++    const { data: byReason, error: reasonError } = await database.rpc("count_reports_by_reason");
+ 
+     if (reasonError) {
+       return NextResponse.json(
+diff --git a/src/app/api/admin/reviews/[id]/approve/route.ts b/src/app/api/admin/reviews/[id]/approve/route.ts
+index 2508a3f..15d4e22 100644
+--- a/src/app/api/admin/reviews/[id]/approve/route.ts
++++ b/src/app/api/admin/reviews/[id]/approve/route.ts
+@@ -1,6 +1,6 @@
+ import { NextRequest, NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+   try {
+@@ -10,7 +10,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
+       return NextResponse.json({ error: "Missing review ID" }, { status: 400 });
+     }
+ 
+-    const { error } = await supabase.from("reviews").update({ is_approved: true }).eq("id", id);
++    const { error } = await database.collection("reviews").update({ is_approved: true }).eq("id", id);
+ 
+     if (error) throw error;
+ 
+diff --git a/src/app/api/admin/reviews/[id]/route.ts b/src/app/api/admin/reviews/[id]/route.ts
+index c5b5b14..38a38f1 100644
+--- a/src/app/api/admin/reviews/[id]/route.ts
++++ b/src/app/api/admin/reviews/[id]/route.ts
+@@ -1,12 +1,12 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+   const { id } = await params;
+ 
+   try {
+-    const { error } = await supabase.from("reviews").delete().eq("id", id);
++    const { error } = await database.collection("reviews").delete().eq("id", id);
+ 
+     if (error) throw error;
+ 
+diff --git a/src/app/api/admin/reviews/route.ts b/src/app/api/admin/reviews/route.ts
+index 54efc3a..ad6c16f 100644
+--- a/src/app/api/admin/reviews/route.ts
++++ b/src/app/api/admin/reviews/route.ts
+@@ -1,14 +1,14 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+ 
+ export async function GET() {
+   try {
+-    const { data, error } = await supabase
+-      .from("reviews")
++    const { data, error } = await database
++      .collection("reviews")
+       .select("*")
+       .order("created_at", { ascending: false });
+ 
+diff --git a/src/app/api/admin/stats/route.ts b/src/app/api/admin/stats/route.ts
+index 83fbbf5..dc78c1a 100644
+--- a/src/app/api/admin/stats/route.ts
++++ b/src/app/api/admin/stats/route.ts
+@@ -1,22 +1,22 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+ 
+ export async function GET() {
+   try {
+-    const { data: users, error: usersError } = await supabase
+-      .from("users")
++    const { data: users, error: usersError } = await database
++      .collection("users")
+       .select("count", { count: "exact" });
+ 
+-    const { data: rides, error: ridesError } = await supabase
+-      .from("rides")
++    const { data: rides, error: ridesError } = await database
++      .collection("rides")
+       .select("count", { count: "exact" });
+ 
+-    const { data: contacts, error: contactsError } = await supabase
+-      .from("contacts")
++    const { data: contacts, error: contactsError } = await database
++      .collection("contacts")
+       .select("count", { count: "exact" });
+ 
+     if (usersError || ridesError || contactsError) {
+diff --git a/src/app/api/admin/users/[id]/route.ts b/src/app/api/admin/users/[id]/route.ts
+index f5e8628..90c5879 100644
+--- a/src/app/api/admin/users/[id]/route.ts
++++ b/src/app/api/admin/users/[id]/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
+   const params = await props.params;
+@@ -8,8 +8,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+   const { name, email, phone, isVerified } = await request.json();
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("users")
++    const { data, error } = await database
++      .collection("users")
+       .update({ name, email, phone, is_verified: isVerified })
+       .eq("id", id)
+       .select();
+@@ -29,7 +29,7 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
+   const { id } = params;
+ 
+   try {
+-    const { error } = await supabase.from("users").delete().eq("id", id);
++    const { error } = await database.collection("users").delete().eq("id", id);
+ 
+     if (error) {
+       throw error;
+diff --git a/src/app/api/admin/users/route.ts b/src/app/api/admin/users/route.ts
+index f98d988..14345ef 100644
+--- a/src/app/api/admin/users/route.ts
++++ b/src/app/api/admin/users/route.ts
+@@ -1,6 +1,6 @@
+ import { type NextRequest, NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ const USERS_PER_PAGE = 10;
+ 
+@@ -10,12 +10,12 @@ export async function GET(request: NextRequest) {
+   const search = searchParams.get("search") || "";
+ 
+   try {
+-    let query = supabase
+-      .from("users")
++    let query = database
++      .collection("users")
+       .select("id, name, email, phone, is_verified", { count: "exact" });
+ 
+     if (search) {
+-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
++      query = query.orIlike(["name", "email", "phone"], search);
+     }
+ 
+     const {
+diff --git a/src/app/api/associated-people/route.ts b/src/app/api/associated-people/route.ts
+index 17ad199..e1a2e6d 100644
+--- a/src/app/api/associated-people/route.ts
++++ b/src/app/api/associated-people/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+@@ -41,8 +41,8 @@ export async function GET() {
+   }
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("associated_people")
++    const { data, error } = await database
++      .collection("associated_people")
+       .select("*")
+       .eq("user_id", userId);
+ 
+@@ -88,8 +88,8 @@ export async function POST(request: Request) {
+       return NextResponse.json({ error: "Name and relationship are required" }, { status: 400 });
+     }
+ 
+-    const { data, error } = await supabase
+-      .from("associated_people")
++    const { data, error } = await database
++      .collection("associated_people")
+       .insert({ user_id: session.user.id, name, relationship })
+       .select()
+       .single();
+@@ -150,8 +150,8 @@ export async function DELETE(request: Request) {
+   }
+ 
+   try {
+-    const { error } = await supabase
+-      .from("associated_people")
++    const { error } = await database
++      .collection("associated_people")
+       .delete()
+       .eq("id", id)
+       .eq("user_id", session.user.id);
+diff --git a/src/app/api/auth/check-reset-token/route.ts b/src/app/api/auth/check-reset-token/route.ts
+index 7a4c2a1..751005b 100644
+--- a/src/app/api/auth/check-reset-token/route.ts
++++ b/src/app/api/auth/check-reset-token/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function GET(request: Request) {
+   const { searchParams } = new URL(request.url);
+@@ -11,8 +11,8 @@ export async function GET(request: Request) {
+   }
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("password_reset_tokens")
++    const { data, error } = await database
++      .collection("password_reset_tokens")
+       .select("expires_at")
+       .eq("token", token)
+       .single();
+diff --git a/src/app/api/auth/logout/route.ts b/src/app/api/auth/logout/route.ts
+index bf04653..2b881db 100644
+--- a/src/app/api/auth/logout/route.ts
++++ b/src/app/api/auth/logout/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function POST(request: Request) {
+   try {
+@@ -25,7 +25,7 @@ export async function POST(request: Request) {
+ 
+     // If there's a subscription and deviceId, delete it from the database
+     if (subscription && deviceId) {
+-      await supabase.from("push_subscriptions").delete().match({
++      await database.collection("push_subscriptions").delete().match({
+         user_id: session.user.id,
+         device_id: deviceId,
+       });
+diff --git a/src/app/api/auth/resend-verification/route.ts b/src/app/api/auth/resend-verification/route.ts
+index 898ad10..9862818 100644
+--- a/src/app/api/auth/resend-verification/route.ts
++++ b/src/app/api/auth/resend-verification/route.ts
+@@ -2,7 +2,7 @@ import crypto from "crypto";
+ 
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendEmail, getVerificationEmailContent } from "@/lib/emailService";
+ 
+ export async function POST(request: Request) {
+@@ -24,8 +24,8 @@ export async function POST(request: Request) {
+ 
+   try {
+     // Find the user
+-    const { data: user, error: userError } = await supabase
+-      .from("users")
++    const { data: user, error: userError } = await database
++      .collection("users")
+       .select("id, name, email, is_verified")
+       .eq(loginMethod === "email" ? "email" : "phone", identifier.toLowerCase())
+       .single();
+@@ -44,11 +44,11 @@ export async function POST(request: Request) {
+     expiresAt.setHours(expiresAt.getHours() + 24); // Token expires in 24 hours
+ 
+     // Delete any existing tokens for this user
+-    await supabase.from("email_verification_tokens").delete().eq("user_id", user.id);
++    await database.collection("email_verification_tokens").delete().eq("user_id", user.id);
+ 
+     // Store new verification token
+-    const { error: tokenError } = await supabase
+-      .from("email_verification_tokens")
++    const { error: tokenError } = await database
++      .collection("email_verification_tokens")
+       .insert({ user_id: user.id, token, expires_at: expiresAt.toISOString() });
+ 
+     if (tokenError) {
+diff --git a/src/app/api/auth/reset-password/route.ts b/src/app/api/auth/reset-password/route.ts
+index 954ef83..e1f0eaf 100644
+--- a/src/app/api/auth/reset-password/route.ts
++++ b/src/app/api/auth/reset-password/route.ts
+@@ -3,7 +3,7 @@ import crypto from "crypto";
+ import { hash } from "bcrypt";
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import {
+   sendEmail,
+   getResetPasswordEmailContent,
+@@ -16,8 +16,8 @@ export async function POST(request: Request) {
+   const lowerCaseEmail = email.toLowerCase();
+ 
+   try {
+-    const { data: user, error: userError } = await supabase
+-      .from("users")
++    const { data: user, error: userError } = await database
++      .collection("users")
+       .select("id")
+       .eq("email", lowerCaseEmail)
+       .single();
+@@ -30,7 +30,7 @@ export async function POST(request: Request) {
+     const expiresAt = new Date();
+     expiresAt.setHours(expiresAt.getHours() + 1); // Token expires in 1 hour
+ 
+-    const { error: insertError } = await supabase.from("password_reset_tokens").insert({
++    const { error: insertError } = await database.collection("password_reset_tokens").insert({
+       user_id: user.id,
+       token,
+       expires_at: expiresAt.toISOString(),
+@@ -53,8 +53,8 @@ export async function PUT(request: Request) {
+   const { token, newPassword } = await request.json();
+ 
+   try {
+-    const { data: resetToken, error: tokenError } = await supabase
+-      .from("password_reset_tokens")
++    const { data: resetToken, error: tokenError } = await database
++      .collection("password_reset_tokens")
+       .select("user_id, created_by_admin")
+       .eq("token", token)
+       .gt("expires_at", new Date().toISOString())
+@@ -66,16 +66,16 @@ export async function PUT(request: Request) {
+ 
+     const hashedPassword = await hash(newPassword, 10);
+ 
+-    const { error: updateError } = await supabase
+-      .from("users")
++    const { error: updateError } = await database
++      .collection("users")
+       .update({ password: hashedPassword })
+       .eq("id", resetToken.user_id);
+ 
+     if (updateError) throw updateError;
+ 
+     // Get user information to send the notification
+-    const { data: userData, error: userError } = await supabase
+-      .from("users")
++    const { data: userData, error: userError } = await database
++      .collection("users")
+       .select("name, email")
+       .eq("id", resetToken.user_id)
+       .single();
+@@ -86,8 +86,8 @@ export async function PUT(request: Request) {
+       await sendEmail(userData.email, "RideShare - Password Change Notification", emailContent);
+     }
+ 
+-    const { error: deleteError } = await supabase
+-      .from("password_reset_tokens")
++    const { error: deleteError } = await database
++      .collection("password_reset_tokens")
+       .delete()
+       .eq("user_id", resetToken.user_id);
+ 
+diff --git a/src/app/api/auth/verify-email/route.ts b/src/app/api/auth/verify-email/route.ts
+index 60033e4..ce3922f 100644
+--- a/src/app/api/auth/verify-email/route.ts
++++ b/src/app/api/auth/verify-email/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendEmail, getWelcomeEmailContent } from "@/lib/emailService";
+ 
+ export async function GET(request: Request) {
+@@ -13,8 +13,8 @@ export async function GET(request: Request) {
+ 
+   try {
+     // Find the token in the database
+-    const { data: tokenData, error: tokenError } = await supabase
+-      .from("email_verification_tokens")
++    const { data: tokenData, error: tokenError } = await database
++      .collection("email_verification_tokens")
+       .select("user_id, expires_at")
+       .eq("token", token)
+       .single();
+@@ -29,8 +29,8 @@ export async function GET(request: Request) {
+     }
+ 
+     // Update user's verified status
+-    const { error: updateError } = await supabase
+-      .from("users")
++    const { error: updateError } = await database
++      .collection("users")
+       .update({ is_verified: true })
+       .eq("id", tokenData.user_id);
+ 
+@@ -39,8 +39,8 @@ export async function GET(request: Request) {
+     }
+ 
+     // Get user's name for the welcome email
+-    const { data: userData } = await supabase
+-      .from("users")
++    const { data: userData } = await database
++      .collection("users")
+       .select("name, email")
+       .eq("id", tokenData.user_id)
+       .single();
+@@ -52,7 +52,7 @@ export async function GET(request: Request) {
+     }
+ 
+     // Delete the used token
+-    await supabase.from("email_verification_tokens").delete().eq("token", token);
++    await database.collection("email_verification_tokens").delete().eq("token", token);
+ 
+     return NextResponse.json({ message: "Email verified successfully" }, { status: 200 });
+   } catch {
+diff --git a/src/app/api/bug-reports/route.ts b/src/app/api/bug-reports/route.ts
+index 92d65f4..c198950 100644
+--- a/src/app/api/bug-reports/route.ts
++++ b/src/app/api/bug-reports/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import type { BugReportFormData } from "@/types";
+ 
+ export async function POST(request: Request) {
+@@ -27,8 +27,8 @@ export async function POST(request: Request) {
+     }
+ 
+     // Get user name for notifications
+-    const { data: userData, error: userError } = await supabase
+-      .from("users")
++    const { data: userData, error: userError } = await database
++      .collection("users")
+       .select("name")
+       .eq("id", userId)
+       .single();
+@@ -38,8 +38,8 @@ export async function POST(request: Request) {
+     }
+ 
+     // Insert bug report into database
+-    const { data: bugReport, error } = await supabase
+-      .from("bug_reports")
++    const { data: bugReport, error } = await database
++      .collection("bug_reports")
+       .insert({
+         user_id: userId,
+         title: data.title,
+diff --git a/src/app/api/contacts/[id]/accept/route.ts b/src/app/api/contacts/[id]/accept/route.ts
+index 5fe74a1..9fe1cdb 100644
+--- a/src/app/api/contacts/[id]/accept/route.ts
++++ b/src/app/api/contacts/[id]/accept/route.ts
+@@ -1,6 +1,6 @@
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ 
+ export async function POST(request: Request) {
+@@ -9,16 +9,16 @@ export async function POST(request: Request) {
+ 
+   try {
+     // Get the contact details
+-    const { data: contact, error: contactError } = await supabase
+-      .from("contacts")
++    const { data: contact, error: contactError } = await database
++      .collection("contacts")
+       .select("*")
+       .eq("id", contactId)
+       .single();
+ 
+     if (contactError) throw contactError;
+ 
+-    const { data: contactUser, error: contactUserError } = await supabase
+-      .from("users")
++    const { data: contactUser, error: contactUserError } = await database
++      .collection("users")
+       .select("name")
+       .eq("id", contact.contact_id)
+       .single();
+@@ -26,8 +26,8 @@ export async function POST(request: Request) {
+     if (contactUserError) throw contactUserError;
+ 
+     // Update the contact status
+-    const { data: updatedContact, error: updateError } = await supabase
+-      .from("contacts")
++    const { data: updatedContact, error: updateError } = await database
++      .collection("contacts")
+       .update({ status: "accepted" })
+       .eq("id", contactId)
+       .select()
+@@ -43,7 +43,7 @@ export async function POST(request: Request) {
+     );
+ 
+     // Create a notification in the database
+-    const { error: notificationError } = await supabase.from("notifications").insert({
++    const { error: notificationError } = await database.collection("notifications").insert({
+       user_id: contact.user_id,
+       message: `${contactUser.name} has accepted your contact request`,
+       type: "contactAccepted",
+diff --git a/src/app/api/contacts/[id]/route.ts b/src/app/api/contacts/[id]/route.ts
+index 03f1131..3dfee62 100644
+--- a/src/app/api/contacts/[id]/route.ts
++++ b/src/app/api/contacts/[id]/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function DELETE(request: Request) {
+   const url = new URL(request.url);
+@@ -22,8 +22,8 @@ export async function DELETE(request: Request) {
+ 
+   try {
+     // First, get the contact record to identify both users
+-    const { data: contactData, error: contactError } = await supabase
+-      .from("contacts")
++    const { data: contactData, error: contactError } = await database
++      .collection("contacts")
+       .select("user_id, contact_id, status")
+       .eq("id", contactId)
+       .single();
+@@ -52,8 +52,8 @@ export async function DELETE(request: Request) {
+     // Only delete shared rides and related data if this is an accepted contact
+     if (status === "accepted") {
+       // 1. Find all rides between these two users
+-      const { data: sharedRides, error: ridesError } = await supabase
+-        .from("rides")
++      const { data: sharedRides, error: ridesError } = await database
++        .collection("rides")
+         .select("id")
+         .or(
+           `and(requester_id.eq.${userId},accepter_id.eq.${otherUserId}),` +
+@@ -73,8 +73,8 @@ export async function DELETE(request: Request) {
+         deletedData.rides = rideIds.length;
+ 
+         // 2a. Delete ride notes for these rides
+-        const { data: deletedNotes, error: notesError } = await supabase
+-          .from("ride_notes")
++        const { data: deletedNotes, error: notesError } = await database
++          .collection("ride_notes")
+           .delete()
+           .in("ride_id", rideIds)
+           .select("id");
+@@ -89,7 +89,7 @@ export async function DELETE(request: Request) {
+         deletedData.notes = deletedNotes?.length || 0;
+ 
+         // 2c. Delete the rides themselves
+-        const { error: deleteRidesError } = await supabase.from("rides").delete().in("id", rideIds);
++        const { error: deleteRidesError } = await database.collection("rides").delete().in("id", rideIds);
+ 
+         if (deleteRidesError) {
+           return NextResponse.json(
+@@ -101,8 +101,8 @@ export async function DELETE(request: Request) {
+     }
+ 
+     // 4. Delete the contact record
+-    const { error: deleteContactError } = await supabase
+-      .from("contacts")
++    const { error: deleteContactError } = await database
++      .collection("contacts")
+       .delete()
+       .eq("id", contactId);
+ 
+diff --git a/src/app/api/contacts/route.ts b/src/app/api/contacts/route.ts
+index 3f0b9ca..5016c9d 100644
+--- a/src/app/api/contacts/route.ts
++++ b/src/app/api/contacts/route.ts
+@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ 
+ export async function POST(request: Request) {
+@@ -25,8 +25,8 @@ export async function POST(request: Request) {
+ 
+     const e164PhoneNumber = phoneNumber.format("E.164");
+ 
+-    const { data: contactUser, error: contactUserError } = await supabase
+-      .from("users")
++    const { data: contactUser, error: contactUserError } = await database
++      .collection("users")
+       .select("id, name, phone")
+       .eq("phone", e164PhoneNumber)
+       .single();
+@@ -35,8 +35,8 @@ export async function POST(request: Request) {
+       return NextResponse.json({ error: "Contact user not found" }, { status: 404 });
+     }
+ 
+-    const { data: existingContact } = await supabase
+-      .from("contacts")
++    const { data: existingContact } = await database
++      .collection("contacts")
+       .select("*")
+       .or(
+         `and(user_id.eq.${userId},contact_id.eq.${contactUser.id}),and(user_id.eq.${contactUser.id},contact_id.eq.${userId})`
+@@ -47,8 +47,8 @@ export async function POST(request: Request) {
+       return NextResponse.json({ error: "Contact already exists" }, { status: 409 });
+     }
+ 
+-    const { data: newContact, error: insertError } = await supabase
+-      .from("contacts")
++    const { data: newContact, error: insertError } = await database
++      .collection("contacts")
+       .insert({
+         user_id: userId,
+         contact_id: contactUser.id,
+@@ -65,7 +65,7 @@ export async function POST(request: Request) {
+       "You have a new contact request"
+     );
+ 
+-    const { error: notificationError } = await supabase.from("notifications").insert({
++    const { error: notificationError } = await database.collection("notifications").insert({
+       user_id: contactUser.id,
+       message: "You have a new contact request",
+       type: "contactRequest",
+diff --git a/src/app/api/driver-offers/[id]/route.ts b/src/app/api/driver-offers/[id]/route.ts
+index 4cf2ae2..f963664 100644
+--- a/src/app/api/driver-offers/[id]/route.ts
++++ b/src/app/api/driver-offers/[id]/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import {
+   driverOfferMigrationMessage,
+   isMissingDriverOfferSchema,
+@@ -30,8 +30,8 @@ export async function PUT(request: Request, { params }: RouteProps) {
+   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+ 
+   try {
+-    const { data: vehicle, error: vehicleError } = await supabase
+-      .from("vehicles")
++    const { data: vehicle, error: vehicleError } = await database
++      .collection("vehicles")
+       .select("id,user_id,make_model,year,color,seats,vehicle_type,pet_policy,smoking_policy,accessibility_features")
+       .eq("id", parsed.offer.vehicle_id)
+       .eq("user_id", session.user.id)
+@@ -42,8 +42,8 @@ export async function PUT(request: Request, { params }: RouteProps) {
+       return NextResponse.json({ error: "Choose one of your active cars." }, { status: 400 });
+     }
+ 
+-    const { data: offer, error } = await supabase
+-      .from("driver_offers")
++    const { data: offer, error } = await database
++      .collection("driver_offers")
+       .update({ ...parsed.offer, vehicle_snapshot: vehicle })
+       .eq("id", id)
+       .eq("driver_id", session.user.id)
+@@ -70,8 +70,8 @@ export async function DELETE(_request: Request, { params }: RouteProps) {
+   if (!isUuid(id)) return NextResponse.json({ error: "Invalid offer ID." }, { status: 400 });
+ 
+   try {
+-    const { data: offer, error } = await supabase
+-      .from("driver_offers")
++    const { data: offer, error } = await database
++      .collection("driver_offers")
+       .delete()
+       .eq("id", id)
+       .eq("driver_id", session.user.id)
+diff --git a/src/app/api/driver-offers/route.ts b/src/app/api/driver-offers/route.ts
+index 0f31537..9736ba4 100644
+--- a/src/app/api/driver-offers/route.ts
++++ b/src/app/api/driver-offers/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import {
+   driverOfferMigrationMessage,
+   isMissingDriverOfferSchema,
+@@ -17,8 +17,8 @@ export async function GET() {
+   }
+ 
+   try {
+-    const { data: offers, error } = await supabase
+-      .from("driver_offers")
++    const { data: offers, error } = await database
++      .collection("driver_offers")
+       .select("*")
+       .or(`status.eq.active,driver_id.eq.${session.user.id}`)
+       .order("departure_time", { ascending: true })
+@@ -27,7 +27,7 @@ export async function GET() {
+ 
+     const driverIds = Array.from(new Set(offers.map((offer) => offer.driver_id).filter(isUuid)));
+     const { data: drivers, error: driversError } = driverIds.length
+-      ? await supabase.from("users").select("id,name").in("id", driverIds)
++      ? await database.collection("users").select("id,name").in("id", driverIds)
+       : { data: [], error: null };
+     if (driversError) throw driversError;
+     const names = new Map(drivers.map((driver) => [driver.id, driver.name]));
+@@ -60,8 +60,8 @@ export async function POST(request: Request) {
+   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+ 
+   try {
+-    const { data: vehicle, error: vehicleError } = await supabase
+-      .from("vehicles")
++    const { data: vehicle, error: vehicleError } = await database
++      .collection("vehicles")
+       .select("id,user_id,make_model,year,color,seats,vehicle_type,pet_policy,smoking_policy,accessibility_features")
+       .eq("id", parsed.offer.vehicle_id)
+       .eq("user_id", session.user.id)
+@@ -72,8 +72,8 @@ export async function POST(request: Request) {
+       return NextResponse.json({ error: "Choose one of your active cars." }, { status: 400 });
+     }
+ 
+-    const { data: offer, error } = await supabase
+-      .from("driver_offers")
++    const { data: offer, error } = await database
++      .collection("driver_offers")
+       .insert({
+         ...parsed.offer,
+         driver_id: session.user.id,
+diff --git a/src/app/api/forum/messages/[id]/reactions/route.ts b/src/app/api/forum/messages/[id]/reactions/route.ts
+index b060815..4d5a0f6 100644
+--- a/src/app/api/forum/messages/[id]/reactions/route.ts
++++ b/src/app/api/forum/messages/[id]/reactions/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { forumMigrationMessage, isForumEmoji, isMissingForumSchema } from "@/lib/forum";
+ import { isUuid } from "@/lib/uuid";
+ 
+@@ -32,8 +32,8 @@ async function updateReaction(request: Request, context: RouteContext, remove: b
+   if (!emoji) return NextResponse.json({ error: "Choose a valid reaction." }, { status: 400 });
+ 
+   try {
+-    const { data: message, error: messageError } = await supabase
+-      .from("forum_messages")
++    const { data: message, error: messageError } = await database
++      .collection("forum_messages")
+       .select("id")
+       .eq("id", id)
+       .maybeSingle();
+@@ -41,14 +41,14 @@ async function updateReaction(request: Request, context: RouteContext, remove: b
+     if (!message) return NextResponse.json({ error: "Message not found." }, { status: 404 });
+ 
+     const query = remove
+-      ? supabase
+-          .from("forum_message_reactions")
++      ? database
++          .collection("forum_message_reactions")
+           .delete()
+           .eq("message_id", id)
+           .eq("user_id", session.user.id)
+           .eq("emoji", emoji)
+-      : supabase
+-          .from("forum_message_reactions")
++      : database
++          .collection("forum_message_reactions")
+           .upsert(
+             { message_id: id, user_id: session.user.id, emoji },
+             { onConflict: "message_id,user_id,emoji", ignoreDuplicates: true }
+diff --git a/src/app/api/forum/messages/[id]/route.ts b/src/app/api/forum/messages/[id]/route.ts
+index 4185ee8..320030b 100644
+--- a/src/app/api/forum/messages/[id]/route.ts
++++ b/src/app/api/forum/messages/[id]/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { forumMigrationMessage, isMissingForumSchema, parseForumMessage } from "@/lib/forum";
+ import { isUuid } from "@/lib/uuid";
+ 
+@@ -26,8 +26,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
+   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("forum_messages")
++    const { data, error } = await database
++      .collection("forum_messages")
+       .update({ content: parsed.content, updated_at: new Date().toISOString() })
+       .eq("id", id)
+       .eq("user_id", session.user.id)
+@@ -54,8 +54,8 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
+   if (!isUuid(id)) return NextResponse.json({ error: "Invalid message ID." }, { status: 400 });
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("forum_messages")
++    const { data, error } = await database
++      .collection("forum_messages")
+       .delete()
+       .eq("id", id)
+       .eq("user_id", session.user.id)
+diff --git a/src/app/api/forum/messages/route.ts b/src/app/api/forum/messages/route.ts
+index e464ccd..e5a9e87 100644
+--- a/src/app/api/forum/messages/route.ts
++++ b/src/app/api/forum/messages/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { forumMigrationMessage, isMissingForumSchema, parseForumMessage } from "@/lib/forum";
+ import { isUuid } from "@/lib/uuid";
+ 
+@@ -13,8 +13,8 @@ export async function GET() {
+   }
+ 
+   try {
+-    const { data: messages, error } = await supabase
+-      .from("forum_messages")
++    const { data: messages, error } = await database
++      .collection("forum_messages")
+       .select("id,user_id,content,created_at,updated_at")
+       .order("created_at", { ascending: false })
+       .limit(100);
+@@ -25,9 +25,9 @@ export async function GET() {
+     const [{ data: users, error: usersError }, { data: reactions, error: reactionsError }] =
+       messageIds.length
+         ? await Promise.all([
+-            supabase.from("users").select("id,name").in("id", userIds),
+-            supabase
+-              .from("forum_message_reactions")
++            database.collection("users").select("id,name").in("id", userIds),
++            database
++              .collection("forum_message_reactions")
+               .select("message_id,user_id,emoji")
+               .in("message_id", messageIds),
+           ])
+@@ -87,8 +87,8 @@ export async function POST(request: Request) {
+   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+ 
+   try {
+-    const { data: message, error } = await supabase
+-      .from("forum_messages")
++    const { data: message, error } = await database
++      .collection("forum_messages")
+       .insert({ ...parsed, user_id: session.user.id })
+       .select("id,user_id,content,created_at,updated_at")
+       .single();
+diff --git a/src/app/api/login/route.ts b/src/app/api/login/route.ts
+index 5f6290e..a27dcb1 100644
+--- a/src/app/api/login/route.ts
++++ b/src/app/api/login/route.ts
+@@ -2,7 +2,7 @@ import { compare } from "bcrypt";
+ import { parsePhoneNumber } from "libphonenumber-js";
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function POST(request: Request) {
+   const { identifier, password, loginMethod } = await request.json();
+@@ -19,7 +19,7 @@ export async function POST(request: Request) {
+     const lowerCaseIdentifier = identifier.toLowerCase();
+ 
+     if (loginMethod === "email") {
+-      query = supabase.from("users").select("*").eq("email", lowerCaseIdentifier).single();
++      query = database.collection("users").select("*").eq("email", lowerCaseIdentifier).single();
+     } else if (loginMethod === "phone") {
+       const phoneNumber = parsePhoneNumber(identifier, { defaultCountry: "PT" });
+       if (!phoneNumber || !phoneNumber.isValid()) {
+@@ -29,7 +29,7 @@ export async function POST(request: Request) {
+         );
+       }
+       const e164PhoneNumber = phoneNumber.format("E.164");
+-      query = supabase.from("users").select("*").eq("phone", e164PhoneNumber).single();
++      query = database.collection("users").select("*").eq("phone", e164PhoneNumber).single();
+     } else {
+       return NextResponse.json(
+         { error: "Invalid login method", code: "INVALID_LOGIN_METHOD" },
+diff --git a/src/app/api/notifications/route.ts b/src/app/api/notifications/route.ts
+index ef5b65a..90b5225 100644
+--- a/src/app/api/notifications/route.ts
++++ b/src/app/api/notifications/route.ts
+@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+@@ -28,8 +28,8 @@ export async function GET(request: Request) {
+   const userId = session.user.id;
+ 
+   try {
+-    const { data: notifications, error } = await supabase
+-      .from("notifications")
++    const { data: notifications, error } = await database
++      .collection("notifications")
+       .select("*")
+       .eq("user_id", userId)
+       .order("created_at", { ascending: false })
+@@ -99,8 +99,8 @@ export async function POST(request: Request) {
+   }
+ 
+   try {
+-    const { error } = await supabase
+-      .from("notifications")
++    const { error } = await database
++      .collection("notifications")
+       .update({ is_read: true })
+       .eq("user_id", userId)
+       .in("id", notificationIds);
+diff --git a/src/app/api/push-subscription/route.ts b/src/app/api/push-subscription/route.ts
+index 57f7a25..100e2c5 100644
+--- a/src/app/api/push-subscription/route.ts
++++ b/src/app/api/push-subscription/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export async function POST(request: Request) {
+   const session = await getServerSession(authOptions);
+@@ -38,7 +38,7 @@ export async function POST(request: Request) {
+   }
+ 
+   try {
+-    const { error } = await supabase.from("push_subscriptions").upsert(
++    const { error } = await database.collection("push_subscriptions").upsert(
+       {
+         user_id: userId,
+         device_id: deviceId,
+@@ -87,8 +87,8 @@ export async function DELETE(request: Request) {
+   }
+ 
+   try {
+-    const { error } = await supabase
+-      .from("push_subscriptions")
++    const { error } = await database
++      .collection("push_subscriptions")
+       .delete()
+       .match({ user_id: userId, device_id: deviceId });
+ 
+diff --git a/src/app/api/reclamations/[id]/route.ts b/src/app/api/reclamations/[id]/route.ts
+index c8a8c84..49dc5f2 100644
+--- a/src/app/api/reclamations/[id]/route.ts
++++ b/src/app/api/reclamations/[id]/route.ts
+@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { validateReclamationInput } from "@/lib/reclamation";
+ 
+ type RouteContext = { params: Promise<{ id: string }> };
+ 
+ async function getOwnedPendingReclamation(id: string, userId: string) {
+-  return supabase
+-    .from("reclamations")
++  return database
++    .collection("reclamations")
+     .select("id")
+     .eq("id", id)
+     .eq("user_id", userId)
+@@ -45,8 +45,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
+   }
+ 
+   const { data: ride, error: rideError } = validation.value.ride_id
+-    ? await supabase
+-        .from("rides")
++    ? await database
++        .collection("rides")
+         .select("id")
+         .eq("id", validation.value.ride_id)
+         .or(`requester_id.eq.${session.user.id},accepter_id.eq.${session.user.id}`)
+@@ -64,8 +64,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
+     );
+   }
+ 
+-  const { data, error } = await supabase
+-    .from("reclamations")
++  const { data, error } = await database
++    .collection("reclamations")
+     .update(validation.value)
+     .eq("id", id)
+     .eq("user_id", session.user.id)
+@@ -94,8 +94,8 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
+   }
+ 
+   const { id } = await params;
+-  const { data, error } = await supabase
+-    .from("reclamations")
++  const { data, error } = await database
++    .collection("reclamations")
+     .delete()
+     .eq("id", id)
+     .eq("user_id", session.user.id)
+diff --git a/src/app/api/reclamations/route.ts b/src/app/api/reclamations/route.ts
+index 8af2844..9fef6cb 100644
+--- a/src/app/api/reclamations/route.ts
++++ b/src/app/api/reclamations/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { validateReclamationInput } from "@/lib/reclamation";
+ 
+ export async function GET() {
+@@ -11,8 +11,8 @@ export async function GET() {
+     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+   }
+ 
+-  const { data, error } = await supabase
+-    .from("reclamations")
++  const { data, error } = await database
++    .collection("reclamations")
+     .select("*")
+     .eq("user_id", session.user.id)
+     .order("created_at", { ascending: false });
+@@ -37,8 +37,8 @@ export async function POST(request: Request) {
+   }
+ 
+   if (validation.value.ride_id) {
+-    const { data: ride, error: rideError } = await supabase
+-      .from("rides")
++    const { data: ride, error: rideError } = await database
++      .collection("rides")
+       .select("id")
+       .eq("id", validation.value.ride_id)
+       .or(`requester_id.eq.${session.user.id},accepter_id.eq.${session.user.id}`)
+@@ -56,8 +56,8 @@ export async function POST(request: Request) {
+     }
+   }
+ 
+-  const { data, error } = await supabase
+-    .from("reclamations")
++  const { data, error } = await database
++    .collection("reclamations")
+     .insert({ ...validation.value, user_id: session.user.id })
+     .select()
+     .single();
+diff --git a/src/app/api/register/route.ts b/src/app/api/register/route.ts
+index 8b9ce1d..a1d4cca 100644
+--- a/src/app/api/register/route.ts
++++ b/src/app/api/register/route.ts
+@@ -5,7 +5,7 @@ import { hash } from "bcrypt";
+ import { parsePhoneNumber } from "libphonenumber-js";
+ import { NextResponse } from "next/server";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import {
+   sendEmail,
+   getVerificationEmailContent,
+@@ -20,7 +20,8 @@ export async function POST(request: Request) {
+       !name?.trim() ||
+       !phone?.trim() ||
+       !email?.trim() ||
+-      !password
++      !password ||
++      typeof password !== "string"
+     ) {
+       return NextResponse.json(
+         { error: "Name, phone, email, and password are required" },
+@@ -28,6 +29,13 @@ export async function POST(request: Request) {
+       );
+     }
+ 
++    if (password.length < 6) {
++      return NextResponse.json(
++        { error: "Password must be at least 6 characters" },
++        { status: 400 }
++      );
++    }
++
+     const lowerCaseEmail = email.trim().toLowerCase();
+ 
+     let phoneNumber;
+@@ -52,8 +60,8 @@ export async function POST(request: Request) {
+ 
+     // Check whether the email is already registered.
+     const { data: existingEmail, error: emailCheckError } =
+-      await supabase
+-        .from("users")
++      await database
++        .collection("users")
+           .select("id,is_verified")
+         .eq("email", lowerCaseEmail)
+         .maybeSingle();
+@@ -80,8 +88,8 @@ export async function POST(request: Request) {
+ 
+     // Check whether the phone number is already registered.
+     const { data: existingPhone, error: phoneCheckError } =
+-      await supabase
+-        .from("users")
++      await database
++        .collection("users")
+         .select("id")
+         .eq("phone", e164PhoneNumber)
+         .maybeSingle();
+@@ -103,8 +111,8 @@ export async function POST(request: Request) {
+ 
+     const hashedPassword = await hash(password, 10);
+ 
+-    const { data: newUser, error: insertError } = await supabase
+-      .from("users")
++    const { data: newUser, error: insertError } = await database
++      .collection("users")
+       .insert({
+         name: name.trim(),
+         phone: e164PhoneNumber,
+@@ -117,7 +125,7 @@ export async function POST(request: Request) {
+ 
+     if (insertError) {
+       console.error("User insert failed:", insertError);
+-      if (insertError.code === "23505") {
++      if (insertError.code === 11000) {
+         const duplicatePhone = /phone/i.test(insertError.message || "");
+         return NextResponse.json(
+           {
+@@ -138,8 +146,8 @@ export async function POST(request: Request) {
+     const token = crypto.randomBytes(32).toString("hex");
+     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+ 
+-    const { error: tokenError } = await supabase
+-      .from("email_verification_tokens")
++    const { error: tokenError } = await database
++      .collection("email_verification_tokens")
+       .insert({
+         user_id: newUser.id,
+         token,
+diff --git a/src/app/api/reports/route.ts b/src/app/api/reports/route.ts
+index bbc98b1..de787f0 100644
+--- a/src/app/api/reports/route.ts
++++ b/src/app/api/reports/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import type { ReportFormData } from "@/types";
+ 
+ export async function POST(request: Request) {
+@@ -36,8 +36,8 @@ export async function POST(request: Request) {
+ 
+     // Check if ride exists if reporting a ride
+     if (data.report_type === "ride" && data.ride_id) {
+-      const { data: rideData, error: rideError } = await supabase
+-        .from("rides")
++      const { data: rideData, error: rideError } = await database
++        .collection("rides")
+         .select("id")
+         .eq("id", data.ride_id)
+         .single();
+@@ -48,8 +48,8 @@ export async function POST(request: Request) {
+     }
+ 
+     // Check if user exists
+-    const { data: userData, error: userError } = await supabase
+-      .from("users")
++    const { data: userData, error: userError } = await database
++      .collection("users")
+       .select("id, name")
+       .eq("id", data.reported_id)
+       .single();
+@@ -59,8 +59,8 @@ export async function POST(request: Request) {
+     }
+ 
+     // Get reporter name
+-    const { data: reporterData, error: reporterError } = await supabase
+-      .from("users")
++    const { data: reporterData, error: reporterError } = await database
++      .collection("users")
+       .select("name")
+       .eq("id", reporterId)
+       .single();
+@@ -70,8 +70,8 @@ export async function POST(request: Request) {
+     }
+ 
+     // Insert report into database
+-    const { data: report, error } = await supabase
+-      .from("reports")
++    const { data: report, error } = await database
++      .collection("reports")
+       .insert({
+         reporter_id: reporterId,
+         reported_id: data.reported_id,
+diff --git a/src/app/api/reviews/route.ts b/src/app/api/reviews/route.ts
+index 5c695b1..63361df 100644
+--- a/src/app/api/reviews/route.ts
++++ b/src/app/api/reviews/route.ts
+@@ -2,7 +2,19 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
++
++export const dynamic = "force-dynamic";
++
++export async function GET() {
++  const { data, error } = await database.rpc("get_approved_reviews");
++  if (error) {
++    console.error("Failed to load approved reviews:", error);
++    return NextResponse.json({ error: "Failed to load approved reviews" }, { status: 500 });
++  }
++
++  return NextResponse.json({ reviews: data ?? [] });
++}
+ 
+ export async function POST(request: Request) {
+   const { reviewerName, review, rating } = await request.json();
+@@ -18,8 +30,8 @@ export async function POST(request: Request) {
+   }
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("reviews")
++    const { data, error } = await database
++      .collection("reviews")
+       .insert({ user_id: userId, reviewer_name: reviewerName, review, rating })
+       .select()
+       .single();
+diff --git a/src/app/api/ride-history/route.ts b/src/app/api/ride-history/route.ts
+index 7ba340e..84976b3 100644
+--- a/src/app/api/ride-history/route.ts
++++ b/src/app/api/ride-history/route.ts
+@@ -12,7 +12,7 @@ import { type NextRequest, NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { normalizeRideStatus } from "@/lib/rideStatus";
+ 
+ export const dynamic = "force-dynamic";
+@@ -47,8 +47,8 @@ export async function GET(req: NextRequest) {
+     const date = url.searchParams.get("date") || "";
+     const timePeriod = url.searchParams.get("timePeriod") || "";
+ 
+-    let query = supabase
+-      .from("rides")
++    let query = database
++      .collection("rides")
+       .select("*", { count: "exact" })
+       .or(`requester_id.eq.${session.user.id},accepter_id.eq.${session.user.id}`)
+       .order("time", { ascending: false });
+diff --git a/src/app/api/rides/[id]/accept/route.ts b/src/app/api/rides/[id]/accept/route.ts
+index 7d0bdc6..8e571be 100644
+--- a/src/app/api/rides/[id]/accept/route.ts
++++ b/src/app/api/rides/[id]/accept/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ import { isRideStatusConstraintError, normalizeRideStatus } from "@/lib/rideStatus";
+ import { isMissingVehicleSchema, vehicleMigrationMessage } from "@/lib/vehicle";
+@@ -29,8 +29,8 @@ export async function POST(request: Request) {
+ 
+   try {
+     // Get the ride details
+-    const { data: ride, error: rideError } = await supabase
+-      .from("rides")
++    const { data: ride, error: rideError } = await database
++      .collection("rides")
+       .select("*")
+       .eq("id", rideId)
+       .single();
+@@ -49,8 +49,8 @@ export async function POST(request: Request) {
+       return NextResponse.json({ error: "This ride is no longer available to offer." }, { status: 409 });
+     }
+ 
+-    const { data: vehicle, error: vehicleError } = await supabase
+-      .from("vehicles")
++    const { data: vehicle, error: vehicleError } = await database
++      .collection("vehicles")
+       .select(
+         "id,make_model,year,color,seats,vehicle_type,pet_policy,smoking_policy,accessibility_features,is_active"
+       )
+@@ -74,16 +74,16 @@ export async function POST(request: Request) {
+       accessibility_features: vehicle.accessibility_features,
+     };
+ 
+-    const { data: accepter, error: accepterError } = await supabase
+-      .from("users")
++    const { data: accepter, error: accepterError } = await database
++      .collection("users")
+       .select("name")
+       .eq("id", userId)
+       .single();
+     if (accepterError) throw accepterError;
+ 
+     // Update the ride
+-    let { data: updatedRide, error: updateError } = await supabase
+-      .from("rides")
++    let { data: updatedRide, error: updateError } = await database
++      .collection("rides")
+       .update({ accepter_id: userId, status: "accepted", offered_vehicle: offeredVehicle })
+       .eq("id", rideId)
+       .is("accepter_id", null)
+@@ -92,8 +92,8 @@ export async function POST(request: Request) {
+       .maybeSingle();
+ 
+     if (isRideStatusConstraintError(updateError)) {
+-      ({ data: updatedRide, error: updateError } = await supabase
+-        .from("rides")
++      ({ data: updatedRide, error: updateError } = await database
++        .collection("rides")
+         .update({ accepter_id: userId, status: "available", offered_vehicle: offeredVehicle })
+         .eq("id", rideId)
+         .is("accepter_id", null)
+@@ -113,7 +113,7 @@ export async function POST(request: Request) {
+     } catch (notificationError) {
+       console.error(`Ride ${rideId} was offered, but push notification failed:`, notificationError);
+     }
+-    const { error: notificationError } = await supabase.from("notifications").insert({
++    const { error: notificationError } = await database.collection("notifications").insert({
+       user_id: ride.requester_id,
+       message: notificationMessage,
+       type: "rideAccepted",
+diff --git a/src/app/api/rides/[id]/canceloffer/route.ts b/src/app/api/rides/[id]/canceloffer/route.ts
+index 017c39c..f106805 100644
+--- a/src/app/api/rides/[id]/canceloffer/route.ts
++++ b/src/app/api/rides/[id]/canceloffer/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ import { isRideStatusConstraintError, normalizeRideStatus } from "@/lib/rideStatus";
+ import { isMissingVehicleSchema, vehicleMigrationMessage } from "@/lib/vehicle";
+@@ -20,8 +20,8 @@ export async function POST(request: Request) {
+ 
+   try {
+     // Get the ride details
+-    const { data: ride, error: rideError } = await supabase
+-      .from("rides")
++    const { data: ride, error: rideError } = await database
++      .collection("rides")
+       .select("*")
+       .eq("id", rideId)
+       .single();
+@@ -34,16 +34,16 @@ export async function POST(request: Request) {
+     }
+ 
+     // Update the ride
+-    let { data: updatedRide, error: updateError } = await supabase
+-      .from("rides")
++    let { data: updatedRide, error: updateError } = await database
++      .collection("rides")
+       .update({ accepter_id: null, status: "pending", offered_vehicle: null })
+       .eq("id", rideId)
+       .select()
+       .single();
+ 
+     if (isRideStatusConstraintError(updateError)) {
+-      ({ data: updatedRide, error: updateError } = await supabase
+-        .from("rides")
++      ({ data: updatedRide, error: updateError } = await database
++        .collection("rides")
+         .update({ accepter_id: null, status: "available", offered_vehicle: null })
+         .eq("id", rideId)
+         .select()
+@@ -53,8 +53,8 @@ export async function POST(request: Request) {
+     if (updateError) throw updateError;
+ 
+     // Get the accepter's name
+-    const { data: accepter, error: accepterError } = await supabase
+-      .from("users")
++    const { data: accepter, error: accepterError } = await database
++      .collection("users")
+       .select("name")
+       .eq("id", userId)
+       .single();
+@@ -67,7 +67,7 @@ export async function POST(request: Request) {
+     } catch (notificationError) {
+       console.error(`Ride ${rideId} offer was cancelled, but push notification failed:`, notificationError);
+     }
+-    const { error: notificationError } = await supabase.from("notifications").insert({
++    const { error: notificationError } = await database.collection("notifications").insert({
+       user_id: ride.requester_id,
+       message,
+       type: "rideCancelled",
+diff --git a/src/app/api/rides/[id]/cancelrequest/route.ts b/src/app/api/rides/[id]/cancelrequest/route.ts
+index ce7040f..068edc8 100644
+--- a/src/app/api/rides/[id]/cancelrequest/route.ts
++++ b/src/app/api/rides/[id]/cancelrequest/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ 
+ export async function POST(request: Request) {
+@@ -18,8 +18,8 @@ export async function POST(request: Request) {
+ 
+   try {
+     // Get the ride details
+-    const { data: ride, error: rideError } = await supabase
+-      .from("rides")
++    const { data: ride, error: rideError } = await database
++      .collection("rides")
+       .select("*")
+       .eq("id", rideId)
+       .single();
+@@ -35,8 +35,8 @@ export async function POST(request: Request) {
+     }
+ 
+     // Update the ride
+-    const { data: updatedRide, error: updateError } = await supabase
+-      .from("rides")
++    const { data: updatedRide, error: updateError } = await database
++      .collection("rides")
+       .update({ status: "cancelled" })
+       .eq("id", rideId)
+       .select()
+@@ -47,8 +47,8 @@ export async function POST(request: Request) {
+     // If there's an accepter, notify them
+     if (ride.accepter_id) {
+       // Get the requester's name
+-      const { data: requester, error: requesterError } = await supabase
+-        .from("users")
++      const { data: requester, error: requesterError } = await database
++        .collection("users")
+         .select("name")
+         .eq("id", userId)
+         .single();
+@@ -63,7 +63,7 @@ export async function POST(request: Request) {
+       );
+ 
+       // Create a notification in the database
+-      const { error: notificationError } = await supabase.from("notifications").insert({
++      const { error: notificationError } = await database.collection("notifications").insert({
+         user_id: ride.accepter_id,
+         message: `${requester.name} has cancelled their ride request from ${ride.from_location} to ${ride.to_location}`,
+         type: "rideCancelled",
+diff --git a/src/app/api/rides/[id]/edit/route.ts b/src/app/api/rides/[id]/edit/route.ts
+index 69c10ab..bc35968 100644
+--- a/src/app/api/rides/[id]/edit/route.ts
++++ b/src/app/api/rides/[id]/edit/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { isMissingRideCriteriaSchema, parseRideCriteria } from "@/lib/rideCriteria";
+ import { normalizeRideStatus } from "@/lib/rideStatus";
+ import type { RideData } from "@/types";
+@@ -25,8 +25,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+   const userId = session.user.id;
+   try {
+     // Fetch the current ride data
+-    const { data: currentRide, error: fetchError } = await supabase
+-      .from("rides")
++    const { data: currentRide, error: fetchError } = await database
++      .collection("rides")
+       .select("*")
+       .eq("id", rideId)
+       .single();
+@@ -42,8 +42,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+     }
+ 
+     // Update the ride
+-    const { data: updatedRide, error: updateError } = await supabase
+-      .from("rides")
++    const { data: updatedRide, error: updateError } = await database
++      .collection("rides")
+       .update({ ...updatedRideData, is_edited: true })
+       .eq("id", rideId)
+       .select()
+diff --git a/src/app/api/rides/[id]/finish/route.ts b/src/app/api/rides/[id]/finish/route.ts
+index 560cfc8..0fce18f 100644
+--- a/src/app/api/rides/[id]/finish/route.ts
++++ b/src/app/api/rides/[id]/finish/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ 
+ export async function POST(request: Request) {
+@@ -18,8 +18,8 @@ export async function POST(request: Request) {
+ 
+   try {
+     // Get the ride details
+-    const { data: ride, error: rideError } = await supabase
+-      .from("rides")
++    const { data: ride, error: rideError } = await database
++      .collection("rides")
+       .select("*")
+       .eq("id", rideId)
+       .single();
+@@ -37,8 +37,8 @@ export async function POST(request: Request) {
+     }
+ 
+     // Update the ride
+-    const { data: updatedRide, error: updateError } = await supabase
+-      .from("rides")
++    const { data: updatedRide, error: updateError } = await database
++      .collection("rides")
+       .update({ status: "completed" })
+       .eq("id", rideId)
+       .select()
+@@ -47,8 +47,8 @@ export async function POST(request: Request) {
+     if (updateError) throw updateError;
+ 
+     // Get the user's name
+-    const { data: user, error: userError } = await supabase
+-      .from("users")
++    const { data: user, error: userError } = await database
++      .collection("users")
+       .select("name")
+       .eq("id", userId)
+       .single();
+@@ -67,7 +67,7 @@ export async function POST(request: Request) {
+       );
+ 
+       // Create a notification in the database
+-      const { error: notificationError } = await supabase.from("notifications").insert({
++      const { error: notificationError } = await database.collection("notifications").insert({
+         user_id: otherUserId,
+         message: `${user.name} has marked the ride from ${ride.from_location} to ${ride.to_location} as completed`,
+         type: "rideCompleted",
+diff --git a/src/app/api/rides/[id]/notes/route.ts b/src/app/api/rides/[id]/notes/route.ts
+index 53edc29..358b699 100644
+--- a/src/app/api/rides/[id]/notes/route.ts
++++ b/src/app/api/rides/[id]/notes/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ 
+ export const dynamic = "force-dynamic";
+@@ -13,8 +13,8 @@ export async function GET(request: Request) {
+   const rideId = url.pathname.split("/").at(-2);
+ 
+   try {
+-    const { data: notes, error } = await supabase
+-      .from("ride_notes")
++    const { data: notes, error } = await database
++      .collection("ride_notes")
+       .select(
+         `
+     *,
+@@ -75,8 +75,8 @@ export async function POST(request: Request) {
+   const rideId = url.pathname.split("/").at(-2);
+ 
+   try {
+-    const { data: newNote, error: insertError } = await supabase
+-      .from("ride_notes")
++    const { data: newNote, error: insertError } = await database
++      .collection("ride_notes")
+       .insert({ ride_id: rideId, user_id: userId, note })
+       .select(
+         `
+@@ -89,14 +89,14 @@ export async function POST(request: Request) {
+     if (insertError) throw insertError;
+ 
+     // Create a notification for the other user involved in the ride
+-    const { data: ride } = await supabase.from("rides").select("*").eq("id", rideId).single();
++    const { data: ride } = await database.collection("rides").select("*").eq("id", rideId).single();
+ 
+     if (ride) {
+       const otherUserId = userId === ride.requester_id ? ride.accepter_id : ride.requester_id;
+       if (otherUserId) {
+         // Fetch the name of the user who added the note
+-        const { data: noteAuthor, error: authorError } = await supabase
+-          .from("users")
++        const { data: noteAuthor, error: authorError } = await database
++          .collection("users")
+           .select("name")
+           .eq("id", userId)
+           .single();
+@@ -108,7 +108,7 @@ export async function POST(request: Request) {
+           "New Ride Message",
+           `${noteAuthor.name} has added a new message to your ride from ${ride.from_location} to ${ride.to_location}: "${note}"`
+         );
+-        await supabase.from("notifications").insert({
++        await database.collection("notifications").insert({
+           user_id: otherUserId,
+           message: `${noteAuthor.name} has added a new message to your ride from ${ride.from_location} to ${ride.to_location}: "${note}"`,
+           type: "newNote",
+@@ -133,8 +133,8 @@ export async function PUT(request: Request) {
+   }
+   const userId = session.user.id;
+   try {
+-    const { data: updatedNote, error: updateError } = await supabase
+-      .from("ride_notes")
++    const { data: updatedNote, error: updateError } = await database
++      .collection("ride_notes")
+       .update({ note, is_edited: true })
+       .eq("id", noteId)
+       .eq("user_id", userId)
+@@ -159,8 +159,8 @@ export async function DELETE(request: Request) {
+   }
+   const userId = session.user.id;
+   try {
+-    const { error: deleteError } = await supabase
+-      .from("ride_notes")
++    const { error: deleteError } = await database
++      .collection("ride_notes")
+       .update({ is_deleted: true })
+       .eq("id", noteId)
+       .eq("user_id", userId)
+@@ -185,8 +185,8 @@ export async function PATCH(request: Request) {
+   }
+   const userId = session.user.id;
+   try {
+-    const { data: note, error: fetchError } = await supabase
+-      .from("ride_notes")
++    const { data: note, error: fetchError } = await database
++      .collection("ride_notes")
+       .select("seen_by")
+       .eq("id", noteId)
+       .single();
+@@ -198,8 +198,8 @@ export async function PATCH(request: Request) {
+       seenBy.push(userId);
+     }
+ 
+-    const { data: updatedNote, error: updateError } = await supabase
+-      .from("ride_notes")
++    const { data: updatedNote, error: updateError } = await database
++      .collection("ride_notes")
+       .update({ seen_by: seenBy })
+       .eq("id", noteId)
+       .select()
+diff --git a/src/app/api/rides/[id]/route.ts b/src/app/api/rides/[id]/route.ts
+index 12e42e4..8539664 100644
+--- a/src/app/api/rides/[id]/route.ts
++++ b/src/app/api/rides/[id]/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { isUuid } from "@/lib/uuid";
+ 
+ type RouteProps = { params: Promise<{ id: string }> };
+@@ -19,8 +19,8 @@ export async function DELETE(_request: Request, { params }: RouteProps) {
+   }
+ 
+   try {
+-    const { data: ride, error: rideError } = await supabase
+-      .from("rides")
++    const { data: ride, error: rideError } = await database
++      .collection("rides")
+       .select("id,requester_id,accepter_id,status")
+       .eq("id", rideId)
+       .maybeSingle();
+@@ -45,8 +45,8 @@ export async function DELETE(_request: Request, { params }: RouteProps) {
+       );
+     }
+ 
+-    const { data: deletedRide, error: deleteError } = await supabase
+-      .from("rides")
++    const { data: deletedRide, error: deleteError } = await database
++      .collection("rides")
+       .delete()
+       .eq("id", rideId)
+       .eq("requester_id", session.user.id)
+diff --git a/src/app/api/rides/route.ts b/src/app/api/rides/route.ts
+index 4cd7365..1a4beeb 100644
+--- a/src/app/api/rides/route.ts
++++ b/src/app/api/rides/route.ts
+@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+ import { getUserContacts } from "@/lib/contactService";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ import { isMissingRideCriteriaSchema, parseRideCriteria } from "@/lib/rideCriteria";
+ import { isRideStatusConstraintError, normalizeRideStatus } from "@/lib/rideStatus";
+@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
+       price_per_seat: 0,
+     };
+     let insertData: Record<string, unknown> = rideData;
+-    let { data: newRide, error: insertError } = await supabase
+-      .from("rides")
++    let { data: newRide, error: insertError } = await database
++      .collection("rides")
+       .insert(insertData)
+       .select()
+       .single();
+@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
+         break;
+       }
+ 
+-      ({ data: newRide, error: insertError } = await supabase
+-        .from("rides")
++      ({ data: newRide, error: insertError } = await database
++        .collection("rides")
+         .insert(insertData)
+         .select()
+         .single());
+@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
+         const message = `A new ride is available from your contact ${userName} from ${from_location} to ${to_location}`;
+ 
+         try {
+-          const { error: notificationError } = await supabase.from("notifications").insert({
++          const { error: notificationError } = await database.collection("notifications").insert({
+             user_id: contactUserId,
+             message,
+             type: "newRide",
+diff --git a/src/app/api/suggested-contacts/route.ts b/src/app/api/suggested-contacts/route.ts
+index 48e584d..a3d4357 100644
+--- a/src/app/api/suggested-contacts/route.ts
++++ b/src/app/api/suggested-contacts/route.ts
+@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+ import { getUserContacts } from "@/lib/contactService";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+@@ -62,8 +62,8 @@ export async function GET() {
+     }
+ 
+     // 3. Find contacts of the user's accepted contacts (potential mutual contacts)
+-    const { data: contactsOfContacts, error: contactsOfContactsError } = await supabase
+-      .from("contacts")
++    const { data: contactsOfContacts, error: contactsOfContactsError } = await database
++      .collection("contacts")
+       .select("user_id, contact_id")
+       .eq("status", "accepted")
+       .or(
+@@ -101,8 +101,8 @@ export async function GET() {
+     }
+ 
+     // 5. Fetch suggested user details
+-    const { data: suggestedUsers, error: suggestedUsersError } = await supabase
+-      .from("users")
++    const { data: suggestedUsers, error: suggestedUsersError } = await database
++      .collection("users")
+       .select("*")
+       .in("id", uniquePotentialContactIds);
+ 
+diff --git a/src/app/api/user-data/create-ride/route.ts b/src/app/api/user-data/create-ride/route.ts
+index be2e7fa..fea367f 100644
+--- a/src/app/api/user-data/create-ride/route.ts
++++ b/src/app/api/user-data/create-ride/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { generateETag, isETagMatch } from "@/utils/etag";
+ 
+ export const dynamic = "force-dynamic";
+@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
+     const userId = session.user.id;
+ 
+     // Fetch associated people
+-    const { data: associatedPeople, error: associatedPeopleError } = await supabase
+-      .from("associated_people")
++    const { data: associatedPeople, error: associatedPeopleError } = await database
++      .collection("associated_people")
+       .select("*")
+       .eq("user_id", userId);
+ 
+diff --git a/src/app/api/user-data/dashboard/route.ts b/src/app/api/user-data/dashboard/route.ts
+index ee010d7..87a8ee4 100644
+--- a/src/app/api/user-data/dashboard/route.ts
++++ b/src/app/api/user-data/dashboard/route.ts
+@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+ import { getUserContacts } from "@/lib/contactService";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { normalizeRideStatus } from "@/lib/rideStatus";
+ import { isUuid } from "@/lib/uuid";
+ import { generateETag, isETagMatch } from "@/utils/etag";
+@@ -46,15 +46,15 @@ export async function GET(req: NextRequest) {
+     }
+ 
+     const [ownedRidesResult, openRidesResult] = await Promise.all([
+-      supabase
+-        .from("rides")
++      database
++        .collection("rides")
+         .select("*")
+         .or(rideConditions.join(","))
+         .or("status.eq.pending,status.eq.available,status.eq.accepted,status.in.(completed,cancelled)")
+         .order("created_at", { ascending: false })
+         .limit(50),
+-      supabase
+-        .from("rides")
++      database
++        .collection("rides")
+         .select("*")
+         .or("status.eq.pending,status.eq.available")
+         .order("created_at", { ascending: false })
+@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
+ 
+     const requesterIds = Array.from(new Set(rides.map((ride) => ride.requester_id).filter(isUuid)));
+     const { data: requesters, error: requestersError } = requesterIds.length
+-      ? await supabase.from("users").select("id,name").in("id", requesterIds)
++      ? await database.collection("users").select("id,name").in("id", requesterIds)
+       : { data: [], error: null };
+     if (requestersError) throw requestersError;
+     const requesterNames = new Map(requesters.map((requester) => [requester.id, requester.name]));
+diff --git a/src/app/api/user-data/edit-ride/route.ts b/src/app/api/user-data/edit-ride/route.ts
+index 7dd49d2..454763c 100644
+--- a/src/app/api/user-data/edit-ride/route.ts
++++ b/src/app/api/user-data/edit-ride/route.ts
+@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { generateETag, isETagMatch } from "@/utils/etag";
+ 
+ export const dynamic = "force-dynamic";
+@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
+       });
+     }
+ 
+-    const { data: ride, error } = await supabase
+-      .from("rides")
++    const { data: ride, error } = await database
++      .collection("rides")
+       .select("*")
+       .eq("id", rideId)
+       .eq("requester_id", userId)
+diff --git a/src/app/api/user-data/profile/route.ts b/src/app/api/user-data/profile/route.ts
+index 9ca0610..f3ade02 100644
+--- a/src/app/api/user-data/profile/route.ts
++++ b/src/app/api/user-data/profile/route.ts
+@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+ import { getUserContacts } from "@/lib/contactService";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { generateETag, isETagMatch } from "@/utils/etag";
+ 
+ export const dynamic = "force-dynamic";
+@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
+ 
+     const userId = session.user.id;
+ 
+-    const { data: userData, error: userError } = await supabase
+-      .from("users")
++    const { data: userData, error: userError } = await database
++      .collection("users")
+       .select("id, name, email, phone, is_verified, created_at")
+       .eq("id", userId)
+       .single();
+@@ -39,8 +39,8 @@ export async function GET(req: NextRequest) {
+ 
+     if (contactsError) throw contactsError;
+ 
+-    const { data: associatedPeople, error: associatedPeopleError } = await supabase
+-      .from("associated_people")
++    const { data: associatedPeople, error: associatedPeopleError } = await database
++      .collection("associated_people")
+       .select("*")
+       .eq("user_id", userId);
+ 
+diff --git a/src/app/api/user-data/ride-details/route.ts b/src/app/api/user-data/ride-details/route.ts
+index c31cf1e..ae31501 100644
+--- a/src/app/api/user-data/ride-details/route.ts
++++ b/src/app/api/user-data/ride-details/route.ts
+@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+ import { getUserContacts } from "@/lib/contactService";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { normalizeRideStatus } from "@/lib/rideStatus";
+ import { generateETag, isETagMatch } from "@/utils/etag";
+ 
+@@ -40,8 +40,8 @@ export async function GET(req: NextRequest) {
+       );
+     }
+ 
+-    const { data: ride, error: rideError } = await supabase
+-      .from("rides")
++    const { data: ride, error: rideError } = await database
++      .collection("rides")
+       .select("*")
+       .eq("id", rideId)
+       .single();
+@@ -131,8 +131,8 @@ export async function GET(req: NextRequest) {
+       );
+     }
+ 
+-    const { data: requester, error: requesterError } = await supabase
+-      .from("users")
++    const { data: requester, error: requesterError } = await database
++      .collection("users")
+       .select("name")
+       .eq("id", ride.requester_id)
+       .maybeSingle();
+diff --git a/src/app/api/users/[id]/change-password/route.ts b/src/app/api/users/[id]/change-password/route.ts
+index e51142d..7ed4753 100644
+--- a/src/app/api/users/[id]/change-password/route.ts
++++ b/src/app/api/users/[id]/change-password/route.ts
+@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendEmail, getPasswordChangeNotificationContent } from "@/lib/emailService";
+ 
+ export async function POST(request: Request) {
+@@ -25,8 +25,8 @@ export async function POST(request: Request) {
+ 
+   try {
+     // Fetch current user data
+-    const { data: user, error: userError } = await supabase
+-      .from("users")
++    const { data: user, error: userError } = await database
++      .collection("users")
+       .select("*")
+       .eq("id", userId)
+       .single();
+@@ -46,8 +46,8 @@ export async function POST(request: Request) {
+     const hashedNewPassword = await hash(newPassword, 10);
+ 
+     // Update password
+-    const { error: updateError } = await supabase
+-      .from("users")
++    const { error: updateError } = await database
++      .collection("users")
+       .update({ password: hashedNewPassword })
+       .eq("id", userId);
+ 
+diff --git a/src/app/api/users/[id]/push-devices/route.ts b/src/app/api/users/[id]/push-devices/route.ts
+index a6d9f02..433aa53 100644
+--- a/src/app/api/users/[id]/push-devices/route.ts
++++ b/src/app/api/users/[id]/push-devices/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+@@ -26,8 +26,8 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
+   }
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("push_subscriptions")
++    const { data, error } = await database
++      .collection("push_subscriptions")
+       .select("device_id, device_name, enabled, last_used")
+       .eq("user_id", id)
+       .order("last_used", { ascending: false });
+diff --git a/src/app/api/users/[id]/push-preference/route.ts b/src/app/api/users/[id]/push-preference/route.ts
+index ba05ca0..0fd6bda 100644
+--- a/src/app/api/users/[id]/push-preference/route.ts
++++ b/src/app/api/users/[id]/push-preference/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+@@ -45,8 +45,8 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
+   }
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("push_subscriptions")
++    const { data, error } = await database
++      .collection("push_subscriptions")
+       .select("enabled")
+       .eq("user_id", id)
+       .eq("device_id", deviceId)
+@@ -103,8 +103,8 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
+   }
+ 
+   try {
+-    const { data, error } = await supabase
+-      .from("push_subscriptions")
++    const { data, error } = await database
++      .collection("push_subscriptions")
+       .update({ enabled })
+       .eq("user_id", id)
+       .eq("device_id", deviceId)
+diff --git a/src/app/api/users/[id]/route.ts b/src/app/api/users/[id]/route.ts
+index 9ef40ab..b358259 100644
+--- a/src/app/api/users/[id]/route.ts
++++ b/src/app/api/users/[id]/route.ts
+@@ -2,7 +2,7 @@ import { parsePhoneNumber } from "libphonenumber-js";
+ import { NextResponse } from "next/server";
+ 
+ import { getUserContacts } from "@/lib/contactService";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { sendEmail, getEmailChangeNotificationContent } from "@/lib/emailService";
+ import { sendImmediateNotification } from "@/lib/pushNotificationService";
+ 
+@@ -19,8 +19,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+ 
+   try {
+     // Get current user data to check if email is being changed
+-    const { data: currentUser, error: userError } = await supabase
+-      .from("users")
++    const { data: currentUser, error: userError } = await database
++      .collection("users")
+       .select("email")
+       .eq("id", userId)
+       .single();
+@@ -37,8 +37,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+ 
+     // Check if new email already exists for another user
+     if (currentUser.email !== email) {
+-      const { data: existingEmail } = await supabase
+-        .from("users")
++      const { data: existingEmail } = await database
++        .collection("users")
+         .select("id")
+         .eq("email", email.toLowerCase())
+         .neq("id", userId)
+@@ -49,8 +49,8 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
+       }
+     }
+ 
+-    const { data: updatedUser, error } = await supabase
+-      .from("users")
++    const { data: updatedUser, error } = await database
++      .collection("users")
+       .update({
+         name,
+         phone: e164Number,
+@@ -98,32 +98,32 @@ export async function DELETE(request: Request) {
+     if (contactsError) throw contactsError;
+ 
+     // Delete user's contacts
+-    const { error: deleteContactsError } = await supabase
+-      .from("contacts")
++    const { error: deleteContactsError } = await database
++      .collection("contacts")
+       .delete()
+       .or(`user_id.eq.${userId},contact_id.eq.${userId}`);
+ 
+     if (deleteContactsError) throw deleteContactsError;
+ 
+     // Update rides where user is requester or accepter
+-    const { error: updateRidesError } = await supabase
+-      .from("rides")
++    const { error: updateRidesError } = await database
++      .collection("rides")
+       .update({ status: "cancelled" })
+       .or(`requester_id.eq.${userId},accepter_id.eq.${userId}`);
+ 
+     if (updateRidesError) throw updateRidesError;
+ 
+     // Get affected rides
+-    const { data: affectedRides, error: affectedRidesError } = await supabase
+-      .from("rides")
++    const { data: affectedRides, error: affectedRidesError } = await database
++      .collection("rides")
+       .select("*")
+       .or(`requester_id.eq.${userId},accepter_id.eq.${userId}`);
+ 
+     if (affectedRidesError) throw affectedRidesError;
+ 
+     // Delete user's notifications
+-    const { error: deleteNotificationsError } = await supabase
+-      .from("notifications")
++    const { error: deleteNotificationsError } = await database
++      .collection("notifications")
+       .delete()
+       .eq("user_id", userId);
+ 
+@@ -153,11 +153,11 @@ export async function DELETE(request: Request) {
+         "Account Deletion Notification",
+         notification.message
+       );
+-      await supabase.from("notifications").insert(notification);
++      await database.collection("notifications").insert(notification);
+     }
+ 
+     // Finally, delete the user
+-    const { error: deleteUserError } = await supabase.from("users").delete().eq("id", userId);
++    const { error: deleteUserError } = await database.collection("users").delete().eq("id", userId);
+ 
+     if (deleteUserError) throw deleteUserError;
+ 
+diff --git a/src/app/api/users/[id]/stats/route.ts b/src/app/api/users/[id]/stats/route.ts
+index 8ebead4..5bb5849 100644
+--- a/src/app/api/users/[id]/stats/route.ts
++++ b/src/app/api/users/[id]/stats/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const dynamic = "force-dynamic";
+ export const revalidate = 0;
+@@ -26,8 +26,8 @@ export async function GET() {
+ 
+   try {
+     // Count completed rides offered by the user
+-    const { count: ridesOffered, error: offeredError } = await supabase
+-      .from("rides")
++    const { count: ridesOffered, error: offeredError } = await database
++      .collection("rides")
+       .select("*", { count: "exact", head: true })
+       .eq("accepter_id", userId)
+       .eq("status", "completed");
+@@ -35,8 +35,8 @@ export async function GET() {
+     if (offeredError) throw offeredError;
+ 
+     // Count completed rides requested by the user
+-    const { count: ridesRequested, error: requestedError } = await supabase
+-      .from("rides")
++    const { count: ridesRequested, error: requestedError } = await database
++      .collection("rides")
+       .select("*", { count: "exact", head: true })
+       .eq("requester_id", userId)
+       .eq("status", "completed");
+diff --git a/src/app/api/users/search/route.ts b/src/app/api/users/search/route.ts
+index f56b811..2f59a4c 100644
+--- a/src/app/api/users/search/route.ts
++++ b/src/app/api/users/search/route.ts
+@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+ import { getUserContacts } from "@/lib/contactService";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import type { User, Contact } from "@/types";
+ 
+ export const dynamic = "force-dynamic";
+@@ -48,7 +48,7 @@ export async function GET(request: Request) {
+   try {
+     // Search for users by name or phone number (partial matches)
+     // Using unaccent to ignore accents and diacritical marks
+-    const { data: users, error: usersError } = await supabase.rpc("search_users_with_unaccent", {
++    const { data: users, error: usersError } = await database.rpc("search_users_with_unaccent", {
+       search_query: query.toLowerCase(),
+       current_user_id: userId,
+       limit_count: 7,
+diff --git a/src/app/api/vehicles/[id]/route.ts b/src/app/api/vehicles/[id]/route.ts
+index bb583b4..f6cb000 100644
+--- a/src/app/api/vehicles/[id]/route.ts
++++ b/src/app/api/vehicles/[id]/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { isMissingVehicleSchema, parseVehicleInput, vehicleMigrationMessage } from "@/lib/vehicle";
+ 
+ type RouteProps = { params: Promise<{ id: string }> };
+@@ -16,8 +16,8 @@ export async function PUT(request: Request, { params }: RouteProps) {
+   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+ 
+   try {
+-    const { data: vehicle, error } = await supabase
+-      .from("vehicles")
++    const { data: vehicle, error } = await database
++      .collection("vehicles")
+       .update(parsed.vehicle)
+       .eq("id", id)
+       .eq("user_id", session.user.id)
+@@ -41,8 +41,8 @@ export async function DELETE(_request: Request, { params }: RouteProps) {
+ 
+   const { id } = await params;
+   try {
+-    const { data: vehicle, error } = await supabase
+-      .from("vehicles")
++    const { data: vehicle, error } = await database
++      .collection("vehicles")
+       .delete()
+       .eq("id", id)
+       .eq("user_id", session.user.id)
+diff --git a/src/app/api/vehicles/route.ts b/src/app/api/vehicles/route.ts
+index 4c46c01..e75a4e4 100644
+--- a/src/app/api/vehicles/route.ts
++++ b/src/app/api/vehicles/route.ts
+@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
+ import { getServerSession } from "next-auth/next";
+ 
+ import { authOptions } from "@/lib/auth";
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { isMissingVehicleSchema, parseVehicleInput, vehicleMigrationMessage } from "@/lib/vehicle";
+ 
+ export async function GET() {
+@@ -10,8 +10,8 @@ export async function GET() {
+   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+ 
+   try {
+-    const { data: vehicles, error } = await supabase
+-      .from("vehicles")
++    const { data: vehicles, error } = await database
++      .collection("vehicles")
+       .select("*")
+       .eq("user_id", session.user.id)
+       .order("created_at", { ascending: false });
+@@ -34,8 +34,8 @@ export async function POST(request: Request) {
+   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+ 
+   try {
+-    const { data: vehicle, error } = await supabase
+-      .from("vehicles")
++    const { data: vehicle, error } = await database
++      .collection("vehicles")
+       .insert({ ...parsed.vehicle, user_id: session.user.id })
+       .select()
+       .single();
+diff --git a/src/components/MultiStepRegisterForm.tsx b/src/components/MultiStepRegisterForm.tsx
+index a6117a5..0f00ddb 100644
+--- a/src/components/MultiStepRegisterForm.tsx
++++ b/src/components/MultiStepRegisterForm.tsx
+@@ -25,6 +25,8 @@ interface MultiStepRegisterFormProps {
+   isLoading: boolean;
+ }
+ 
++const MIN_PASSWORD_LENGTH = 6;
++
+ export function MultiStepRegisterForm({ onSubmit, isLoading }: MultiStepRegisterFormProps) {
+   const [step, setStep] = useState(0);
+   const [formData, setFormData] = useState({
+@@ -58,6 +60,11 @@ export function MultiStepRegisterForm({ onSubmit, isLoading }: MultiStepRegister
+   };
+ 
+   const handleNext = () => {
++    if (step === 2 && formData.password.length < MIN_PASSWORD_LENGTH) {
++      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
++      return;
++    }
++
+     if (isStepValid(step)) {
+       if (step === 2 && formData.password !== formData.confirmPassword) {
+         setError("Passwords do not match");
+@@ -74,10 +81,18 @@ export function MultiStepRegisterForm({ onSubmit, isLoading }: MultiStepRegister
+ 
+   const handleSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
++    if (formData.password.length < MIN_PASSWORD_LENGTH) {
++      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
++      return;
++    }
+     if (formData.password !== formData.confirmPassword) {
+       setError("Passwords do not match");
+       return;
+     }
++    if (!agreedToTerms) {
++      setError("Please accept the Terms of Service and Privacy Policy");
++      return;
++    }
+     try {
+       const phoneNumber = parsePhoneNumber(formData.phone);
+       if (!phoneNumber || !phoneNumber.isValid()) {
+@@ -244,7 +259,10 @@ export function MultiStepRegisterForm({ onSubmit, isLoading }: MultiStepRegister
+             <Checkbox
+               id="terms"
+               checked={agreedToTerms}
+-              onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
++              onCheckedChange={(checked) => {
++                setAgreedToTerms(checked === true);
++                setError(null);
++              }}
+             />
+             <Label
+               htmlFor="terms"
+diff --git a/src/components/WelcomePage.tsx b/src/components/WelcomePage.tsx
+index 045007b..369f409 100644
+--- a/src/components/WelcomePage.tsx
++++ b/src/components/WelcomePage.tsx
+@@ -2,7 +2,6 @@
+ 
+ import "slick-carousel/slick/slick.css";
+ import "slick-carousel/slick/slick-theme.css";
+-import { createClient } from "@supabase/supabase-js";
+ import { motion, useScroll, useTransform } from "framer-motion";
+ import {
+   Car,
+@@ -171,19 +170,14 @@ export default function WelcomePage() {
+   // Replace the fetchApprovedReviews function with this new implementation
+   const fetchApprovedReviews = async () => {
+     try {
+-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+-
+-      if (!supabaseUrl || !supabaseAnonKey) {
+-        throw new Error("Missing Supabase environment variables");
++      const response = await fetch("/api/reviews?approved=true", { cache: "no-store" });
++      if (!response.ok) {
++        throw new Error(`Failed to load approved reviews (${response.status}).`);
+       }
+-
+-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+-      const { data, error } = await supabase.rpc("get_approved_reviews");
+-
+-      if (error) throw error;
+-      return data || [];
+-    } catch {
++      const { reviews } = await response.json();
++      return reviews;
++    } catch (error) {
++      console.error("Failed to load approved reviews:", error);
+       return [];
+     }
+   };
+diff --git a/src/lib/auth.ts b/src/lib/auth.ts
+index 3d64463..4d9cbee 100644
+--- a/src/lib/auth.ts
++++ b/src/lib/auth.ts
+@@ -4,7 +4,7 @@ import type { NextAuthOptions } from "next-auth";
+ // eslint-disable-next-line import/no-named-as-default
+ import CredentialsProvider from "next-auth/providers/credentials";
+ 
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ 
+ export const authOptions: NextAuthOptions = {
+   providers: [
+@@ -23,19 +23,24 @@ export const authOptions: NextAuthOptions = {
+         const identifier = credentials.identifier.toLowerCase();
+ 
+         if (identifier.includes("@")) {
+-          query = supabase.from("users").select("*").eq("email", identifier).single();
++          query = database.collection("users").select("*").eq("email", identifier).single();
+         } else {
+           const phoneNumber = parsePhoneNumber(identifier, { defaultCountry: "PT" });
+           if (!phoneNumber || !phoneNumber.isValid()) {
+             return null;
+           }
+           const e164PhoneNumber = phoneNumber.format("E.164");
+-          query = supabase.from("users").select("*").eq("phone", e164PhoneNumber).single();
++          query = database.collection("users").select("*").eq("phone", e164PhoneNumber).single();
+         }
+ 
+         const { data: user, error } = await query;
+ 
+-        if (error || !user) {
++        if (error) {
++          console.error("Failed to look up login credentials:", error);
++          return null;
++        }
++
++        if (!user) {
+           return null;
+         }
+ 
+diff --git a/src/lib/contactService.ts b/src/lib/contactService.ts
+index 4281502..00d9472 100644
+--- a/src/lib/contactService.ts
++++ b/src/lib/contactService.ts
+@@ -1,4 +1,4 @@
+-import { supabase } from "@/lib/db";
++import { database } from "@/lib/db";
+ import { isUuid } from "@/lib/uuid";
+ 
+ type ContactUser = {
+@@ -29,8 +29,8 @@ export async function getUserContacts(userId: string) {
+     return { data: null, error: new Error("A valid user ID is required to load contacts.") };
+   }
+ 
+-  const { data: contacts, error: contactsError } = await supabase
+-    .from("contacts")
++  const { data: contacts, error: contactsError } = await database
++    .collection("contacts")
+     .select("*")
+     .or(`user_id.eq.${userId},contact_id.eq.${userId}`);
+ 
+@@ -53,8 +53,8 @@ export async function getUserContacts(userId: string) {
+   const userIds = Array.from(
+     new Set(validContacts.flatMap(({ user_id, contact_id }) => [user_id, contact_id]))
+   );
+-  const { data: users, error: usersError } = await supabase
+-    .from("users")
++  const { data: users, error: usersError } = await database
++    .collection("users")
+     .select("id, name, phone")
+     .in("id", userIds);
+ 
+diff --git a/src/lib/db.ts b/src/lib/db.ts
+index c3731ad..878b2e0 100644
+--- a/src/lib/db.ts
++++ b/src/lib/db.ts
+@@ -1,27 +1,944 @@
+-import { createClient, SupabaseClient } from "@supabase/supabase-js";
++import { randomUUID } from "crypto";
+ 
+-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
++import {
++  type Db,
++  type Document,
++  type Filter,
++  type ObjectId,
++  MongoClient,
++} from "mongodb";
+ 
+-let supabaseInstance: SupabaseClient | null = null;
++type MongoDocument = Document;
++type DatabaseError = Error & { code?: number | string };
++type QueryOperation = "find" | "insert" | "update" | "delete" | "upsert";
++type SelectOptions = {
++  count?: "exact" | "planned" | "estimated";
++  head?: boolean;
++};
+ 
+-export function getSupabaseClient(): SupabaseClient {
+-  if (supabaseInstance === null) {
+-    if (!supabaseUrl || !supabaseKey) {
+-      throw new Error(
+-        "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+-      );
++export type DatabaseResult<T> =
++  | { data: T; error: null; count: number | null }
++  | { data: null; error: DatabaseError; count: number | null };
++
++declare global {
++  // Node's global augmentation requires var for cross-module caching.
++  // eslint-disable-next-line no-var
++  var mongoClientPromise: Promise<MongoClient> | undefined;
++  // eslint-disable-next-line no-var
++  var mongoDatabasePromise: Promise<Db> | undefined;
++}
++
++const indexedCollections = [
++  "users",
++  "rides",
++  "vehicles",
++  "driver_offers",
++  "associated_people",
++  "bug_reports",
++  "contacts",
++  "email_verification_tokens",
++  "notifications",
++  "password_reset_tokens",
++  "push_subscriptions",
++  "reports",
++  "reclamations",
++  "reviews",
++  "ride_notes",
++  "forum_messages",
++] as const;
++
++async function createIndexes(db: Db) {
++  await Promise.all(
++    indexedCollections.map((name) =>
++      db.collection(name).createIndex({ id: 1 }, { unique: true })
++    )
++  );
++  await Promise.all([
++    db.collection("users").createIndex({ email: 1 }, { unique: true }),
++    db.collection("users").createIndex({ phone: 1 }),
++    db.collection("rides").createIndex({ requester_id: 1 }),
++    db.collection("rides").createIndex({ accepter_id: 1 }),
++    db.collection("vehicles").createIndex({ user_id: 1 }),
++    db.collection("driver_offers").createIndex({ status: 1, departure_time: 1 }),
++    db.collection("driver_offers").createIndex({ driver_id: 1 }),
++    db.collection("associated_people").createIndex({ user_id: 1 }),
++    db.collection("bug_reports").createIndex({ status: 1 }),
++    db.collection("bug_reports").createIndex({ user_id: 1 }),
++    db.collection("contacts").createIndex(
++      { user_id: 1, contact_id: 1 },
++      { unique: true }
++    ),
++    db.collection("contacts").createIndex({ contact_id: 1 }),
++    db.collection("email_verification_tokens").createIndex({ token: 1 }, { unique: true }),
++    db.collection("notifications").createIndex({ user_id: 1 }),
++    db.collection("notifications").createIndex({ related_id: 1 }),
++    db.collection("password_reset_tokens").createIndex({ expires_at: 1 }),
++    db.collection("password_reset_tokens").createIndex({ token: 1 }),
++    db.collection("password_reset_tokens").createIndex({ user_id: 1 }),
++    db.collection("push_subscriptions").createIndex(
++      { user_id: 1, device_id: 1 },
++      { unique: true }
++    ),
++    db.collection("push_subscriptions").createIndex({ device_id: 1 }),
++    db.collection("push_subscriptions").createIndex({ last_used: 1 }),
++    db.collection("reports").createIndex({ reported_id: 1 }),
++    db.collection("reports").createIndex({ reporter_id: 1 }),
++    db.collection("reports").createIndex({ ride_id: 1 }),
++    db.collection("reports").createIndex({ status: 1 }),
++    db.collection("reclamations").createIndex({ user_id: 1 }),
++    db.collection("reclamations").createIndex({ status: 1 }),
++    db.collection("reclamations").createIndex({ created_at: -1 }),
++    db.collection("reviews").createIndex({ created_at: -1 }),
++    db.collection("reviews").createIndex({ is_approved: 1 }),
++    db.collection("reviews").createIndex({ user_id: 1 }),
++    db.collection("ride_notes").createIndex({ ride_id: 1 }),
++    db.collection("forum_messages").createIndex({ created_at: -1 }),
++    db.collection("forum_message_reactions").createIndex(
++      { message_id: 1, user_id: 1, emoji: 1 },
++      { unique: true }
++    ),
++    db.collection("forum_message_reactions").createIndex({ message_id: 1 }),
++  ]);
++}
++
++async function getMongoDatabase(): Promise<Db> {
++  const uri = process.env.MONGODB_URI;
++  if (!uri) {
++    throw new Error("MongoDB is not configured. Set MONGODB_URI in your environment.");
++  }
++
++  if (!globalThis.mongoClientPromise) {
++    const client = new MongoClient(uri);
++    globalThis.mongoClientPromise = client.connect().catch((error: unknown) => {
++      globalThis.mongoClientPromise = undefined;
++      throw error;
++    });
++  }
++
++  if (!globalThis.mongoDatabasePromise) {
++    globalThis.mongoDatabasePromise = globalThis.mongoClientPromise
++      .then(async (client) => {
++        const db = client.db(process.env.MONGODB_DB || "ride_share");
++        await createIndexes(db);
++        return db;
++      })
++      .catch((error: unknown) => {
++        globalThis.mongoDatabasePromise = undefined;
++        throw error;
++      });
++  }
++
++  return globalThis.mongoDatabasePromise;
++}
++
++function errorResult<T>(error: unknown): DatabaseResult<T> {
++  return {
++    data: null,
++    error: error instanceof Error ? error : new Error(String(error)),
++    count: null,
++  };
++}
++
++function splitSelection(selection: string): string[] {
++  const fields: string[] = [];
++  let depth = 0;
++  let start = 0;
++
++  for (let index = 0; index < selection.length; index += 1) {
++    if (selection[index] === "(") depth += 1;
++    if (selection[index] === ")") depth -= 1;
++    if (selection[index] === "," && depth === 0) {
++      fields.push(selection.slice(start, index).trim());
++      start = index + 1;
++    }
++  }
++
++  const lastField = selection.slice(start).trim();
++  if (lastField) fields.push(lastField);
++  return fields;
++}
++
++function selectionProjection(selection: string): Record<string, 1> | undefined {
++  const fields = splitSelection(selection);
++  if (fields.length === 0 || fields.includes("*")) return undefined;
++
++  const projection: Record<string, 1> = {};
++  for (const field of fields) {
++    const relation = field.match(/^[^:]+:([^()]+)\(/);
++    projection[relation?.[1] ?? field] = 1;
++  }
++  return projection;
++}
++
++function relationSelection(selection: string) {
++  return splitSelection(selection)
++    .map((field) => {
++      const match = field.match(/^([^:]+):([^()]+)\(([^()]*)\)$/);
++      if (!match) return null;
++      const [, alias, foreignKey, fields] = match;
++      if (alias === "user" && foreignKey === "user_id") {
++        return { alias, foreignKey, collection: "users", fields };
++      }
++      if (alias === "ride" && foreignKey === "ride_id") {
++        return { alias, foreignKey, collection: "rides", fields };
++      }
++      return null;
++    })
++    .filter((relation): relation is NonNullable<typeof relation> => relation !== null);
++}
++
++function stripMongoId(document: MongoDocument): MongoDocument {
++  const { _id: _mongoId, ...result } = document;
++  return result;
++}
++
++function projectSelectedFields(
++  document: MongoDocument,
++  selection: string
++): MongoDocument {
++  const stripped = stripMongoId(document);
++  const fields = splitSelection(selection);
++  if (fields.length === 0 || fields.includes("*")) return stripped;
++  const result: MongoDocument = {};
++  for (const field of fields) {
++    if (!field.includes(":") && Object.prototype.hasOwnProperty.call(stripped, field)) {
++      result[field] = stripped[field];
++    }
++  }
++  return result;
++}
++
++function parseFilterValue(value: string): unknown {
++  if (value === "null") return null;
++  if (value === "true") return true;
++  if (value === "false") return false;
++  return value;
++}
++
++function splitFilterExpression(expression: string): string[] {
++  const values: string[] = [];
++  let depth = 0;
++  let start = 0;
++
++  for (let index = 0; index < expression.length; index += 1) {
++    if (expression[index] === "(") depth += 1;
++    if (expression[index] === ")") depth -= 1;
++    if (expression[index] === "," && depth === 0) {
++      values.push(expression.slice(start, index).trim());
++      start = index + 1;
++    }
++  }
++
++  const lastValue = expression.slice(start).trim();
++  if (lastValue) values.push(lastValue);
++  return values;
++}
++
++function parseFilterExpression(expression: string): Filter<MongoDocument> {
++  const trimmed = expression.trim();
++  const group = trimmed.match(/^(and|or)\((.*)\)$/);
++  if (group) {
++    const operator = group[1] === "and" ? "$and" : "$or";
++    return {
++      [operator]: splitFilterExpression(group[2]).map(parseFilterExpression),
++    };
++  }
++
++  const match = trimmed.match(/^([^.]*)\.(not\.)?(eq|neq|gt|gte|lt|lte|ilike|like|in|is)\.(.*)$/);
++  if (!match) {
++    throw new Error(`Unsupported MongoDB filter expression: ${expression}`);
++  }
++
++  const [, field, negated, operator, rawValue] = match;
++  const value = rawValue.startsWith("(") && rawValue.endsWith(")")
++    ? rawValue.slice(1, -1)
++    : rawValue;
++
++  if (operator === "in") {
++    const values = splitFilterExpression(value).map(parseFilterValue);
++    return { [field]: { [negated ? "$nin" : "$in"]: values } };
++  }
++  if (operator === "is") {
++    const parsedValue = parseFilterValue(value);
++    return { [field]: { [negated ? "$ne" : "$eq"]: parsedValue } };
++  }
++  if (operator === "ilike" || operator === "like") {
++    const regex = value
++      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
++      .replace(/%/g, ".*")
++      .replace(/_/g, ".");
++    const pattern = new RegExp(regex, operator === "ilike" ? "i" : "");
++    return { [field]: negated ? { $not: pattern } : { $regex: regex, ...(operator === "ilike" ? { $options: "i" } : {}) } };
++  }
++
++  const mongoOperators: Record<string, string> = {
++    eq: "$eq",
++    neq: "$ne",
++    gt: "$gt",
++    gte: "$gte",
++    lt: "$lt",
++    lte: "$lte",
++  };
++  const parsedValue = parseFilterValue(value);
++  if (!negated) return { [field]: { [mongoOperators[operator]]: parsedValue } };
++  if (operator === "eq") return { [field]: { $ne: parsedValue } };
++  if (operator === "neq") return { [field]: { $eq: parsedValue } };
++  return { [field]: { $not: { [mongoOperators[operator]]: parsedValue } } };
++}
++
++function addDefaults(collection: string, input: MongoDocument): MongoDocument {
++  const document = { ...input };
++  const now = new Date().toISOString();
++  if (collection !== "forum_message_reactions" && !document.id) {
++    document.id = randomUUID();
++  }
++  document.created_at ??= now;
++
++  switch (collection) {
++    case "users":
++      document.push_enabled ??= true;
++      document.is_verified ??= false;
++      break;
++    case "rides":
++      document.passenger_count ??= 1;
++      document.pet_preference ??= "any";
++      document.smoking_preference ??= "any";
++      document.vehicle_type ??= "any";
++      document.gender_preference ??= "any";
++      document.is_edited ??= false;
++      break;
++    case "vehicles":
++      document.seats ??= 4;
++      document.pet_policy ??= "not_allowed";
++      document.smoking_policy ??= "non_smoking";
++      document.is_active ??= true;
++      break;
++    case "driver_offers":
++      document.status ??= "active";
++      break;
++    case "reclamations":
++      document.status ??= "pending";
++      document.updated_at ??= now;
++      break;
++    case "bug_reports":
++      document.status ??= "new";
++      document.updated_at ??= now;
++      break;
++    case "notifications":
++      document.is_read ??= false;
++      if (!document.link && document.related_id) {
++        if (["newNote", "rideAccepted", "rideCancelled", "rideCompleted"].includes(document.type)) {
++          document.link = `/rides/${document.related_id}`;
++        } else if (["contactRequest", "contactAccepted"].includes(document.type)) {
++          document.link = "/profile?tab=contacts";
++        } else if (document.type === "newRide") {
++          document.link = "/dashboard";
++        }
++      }
++      break;
++    case "password_reset_tokens":
++      document.updated_at ??= now;
++      break;
++    case "reports":
++      document.updated_at ??= now;
++      break;
++    case "push_subscriptions":
++      document.device_id ??= randomUUID();
++      document.enabled ??= true;
++      document.last_used ??= now;
++      break;
++    case "reviews":
++      document.is_approved ??= false;
++      break;
++    case "ride_notes":
++      document.is_edited ??= false;
++      document.is_deleted ??= false;
++      document.seen_by ??= [];
++      break;
++    case "forum_messages":
++      document.updated_at ??= now;
++      break;
++  }
++
++  return document;
++}
++
++async function deleteRelatedDocuments(db: Db, collection: string, documents: MongoDocument[]) {
++  if (collection === "users") {
++    const userIds = documents.map((document) => document.id).filter(Boolean);
++    if (userIds.length === 0) return;
++    const [vehicleRecords, ownedRides, authoredMessages] = await Promise.all([
++      db.collection("vehicles").find({ user_id: { $in: userIds } }).project({ id: 1 }).toArray(),
++      db.collection("rides").find({ requester_id: { $in: userIds } }).toArray(),
++      db.collection("forum_messages").find({ user_id: { $in: userIds } }).toArray(),
++    ]);
++    const vehicleIds = vehicleRecords.map((vehicle) => vehicle.id);
++    await Promise.all([
++      deleteRelatedDocuments(db, "rides", ownedRides),
++      deleteRelatedDocuments(db, "forum_messages", authoredMessages),
++    ]);
++    await Promise.all([
++      db.collection("associated_people").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("contacts").deleteMany({
++        $or: [{ user_id: { $in: userIds } }, { contact_id: { $in: userIds } }],
++      }),
++      db.collection("email_verification_tokens").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("notifications").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("password_reset_tokens").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("push_subscriptions").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("bug_reports").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("reports").deleteMany({
++        $or: [{ reporter_id: { $in: userIds } }, { reported_id: { $in: userIds } }],
++      }),
++      db.collection("reclamations").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("reviews").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("ride_notes").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("forum_message_reactions").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("rides").deleteMany({ requester_id: { $in: userIds } }),
++      db.collection("rides").updateMany(
++        { accepter_id: { $in: userIds } },
++        { $set: { accepter_id: null } }
++      ),
++      db.collection("vehicles").deleteMany({ user_id: { $in: userIds } }),
++      db.collection("driver_offers").deleteMany({ driver_id: { $in: userIds } }),
++      db.collection("forum_messages").deleteMany({ user_id: { $in: userIds } }),
++    ]);
++    if (vehicleIds.length > 0) {
++      await db
++        .collection("driver_offers")
++        .updateMany({ vehicle_id: { $in: vehicleIds } }, { $set: { vehicle_id: null } });
++    }
++    return;
++  }
++
++  if (collection === "rides") {
++    const rideIds = documents.map((document) => document.id).filter(Boolean);
++    if (rideIds.length === 0) return;
++    await Promise.all([
++      db.collection("ride_notes").deleteMany({ ride_id: { $in: rideIds } }),
++      db.collection("reports").updateMany(
++        { ride_id: { $in: rideIds } },
++        { $set: { ride_id: null } }
++      ),
++      db.collection("reclamations").updateMany(
++        { ride_id: { $in: rideIds } },
++        { $set: { ride_id: null } }
++      ),
++    ]);
++    return;
++  }
++
++  if (collection === "vehicles") {
++    const vehicleIds = documents.map((document) => document.id).filter(Boolean);
++    if (vehicleIds.length > 0) {
++      await db
++        .collection("driver_offers")
++        .updateMany({ vehicle_id: { $in: vehicleIds } }, { $set: { vehicle_id: null } });
++    }
++    return;
++  }
++
++  if (collection === "forum_messages") {
++    const messageIds = documents.map((document) => document.id).filter(Boolean);
++    if (messageIds.length > 0) {
++      await db
++        .collection("forum_message_reactions")
++        .deleteMany({ message_id: { $in: messageIds } });
++    }
++  }
++}
++
++class MongoQuery<T = MongoDocument[]> implements PromiseLike<DatabaseResult<T>> {
++  private readonly filters: Filter<MongoDocument>[] = [];
++  private operation: QueryOperation = "find";
++  private payload: MongoDocument | MongoDocument[] = {};
++  private selection = "*";
++  private selectionOptions: SelectOptions = {};
++  private returningData = false;
++  private sort: Record<string, 1 | -1> = {};
++  private maxResults: number | undefined;
++  private offset = 0;
++  private singleResult = false;
++  private optionalSingleResult = false;
++  private conflictFields: string[] = [];
++  private ignoreDuplicates = false;
++  private execution: Promise<DatabaseResult<T>> | undefined;
++
++  constructor(private readonly collectionName: string) {}
++
++  select(selection = "*", options: SelectOptions = {}): this {
++    this.selection = selection;
++    this.selectionOptions = options;
++    this.returningData = true;
++    return this;
++  }
++
++  eq(field: string, value: unknown): this {
++    this.filters.push({ [field]: { $eq: value } });
++    return this;
++  }
++
++  neq(field: string, value: unknown): this {
++    this.filters.push({ [field]: { $ne: value } });
++    return this;
++  }
++
++  gt(field: string, value: unknown): this {
++    this.filters.push({ [field]: { $gt: value } });
++    return this;
++  }
++
++  gte(field: string, value: unknown): this {
++    this.filters.push({ [field]: { $gte: value } });
++    return this;
++  }
++
++  lt(field: string, value: unknown): this {
++    this.filters.push({ [field]: { $lt: value } });
++    return this;
++  }
++
++  lte(field: string, value: unknown): this {
++    this.filters.push({ [field]: { $lte: value } });
++    return this;
++  }
++
++  in(field: string, values: readonly unknown[]): this {
++    this.filters.push({ [field]: { $in: [...values] } });
++    return this;
++  }
++
++  is(field: string, value: unknown): this {
++    this.filters.push({ [field]: value === null ? null : { $eq: value } });
++    return this;
++  }
++
++  not(field: string, operator: string, value: unknown): this {
++    if (operator === "like" || operator === "ilike") {
++      const regex = String(value)
++        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
++        .replace(/%/g, ".*")
++        .replace(/_/g, ".");
++      this.filters.push({
++        [field]: {
++          $not: new RegExp(regex, operator === "ilike" ? "i" : ""),
++        },
++      });
++      return this;
+     }
+ 
+-    supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+-      auth: {
+-        autoRefreshToken: false,
+-        persistSession: false,
+-        detectSessionInUrl: false,
+-      },
++    const operators: Record<string, string> = {
++      eq: "$ne",
++      neq: "$eq",
++      is: "$ne",
++      in: "$nin",
++      like: "$not",
++      ilike: "$not",
++    };
++    const mongoOperator = operators[operator];
++    if (!mongoOperator) throw new Error(`Unsupported MongoDB negation operator: ${operator}`);
++    const condition = operator === "is" && value === null
++      ? { $ne: null }
++      : { [mongoOperator]: value };
++    this.filters.push({ [field]: condition });
++    return this;
++  }
++
++  ilike(field: string, pattern: string): this {
++    const regex = pattern
++      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
++      .replace(/%/g, ".*")
++      .replace(/_/g, ".");
++    this.filters.push({ [field]: { $regex: regex, $options: "i" } });
++    return this;
++  }
++
++  like(field: string, pattern: string): this {
++    const regex = pattern
++      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
++      .replace(/%/g, ".*")
++      .replace(/_/g, ".");
++    this.filters.push({ [field]: { $regex: regex } });
++    return this;
++  }
++
++  or(expression: string): this {
++    this.filters.push(parseFilterExpression(`or(${expression})`));
++    return this;
++  }
++
++  orIlike(fields: string[], value: string): this {
++    const regex = value
++      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
++      .replace(/%/g, ".*")
++      .replace(/_/g, ".");
++    this.filters.push({
++      $or: fields.map((field) => ({
++        [field]: { $regex: regex, $options: "i" },
++      })),
+     });
++    return this;
++  }
++
++  match(values: MongoDocument): this {
++    for (const [field, value] of Object.entries(values)) {
++      this.filters.push({ [field]: { $eq: value } });
++    }
++    return this;
++  }
++
++  order(field: string, options: { ascending?: boolean } = {}): this {
++    this.sort[field] = options.ascending === false ? -1 : 1;
++    return this;
++  }
++
++  limit(count: number): this {
++    this.maxResults = count;
++    return this;
++  }
++
++  range(from: number, to: number): this {
++    this.offset = from;
++    this.maxResults = Math.max(0, to - from + 1);
++    return this;
++  }
++
++  single(): MongoQuery<any> {
++    this.singleResult = true;
++    this.optionalSingleResult = false;
++    return this as unknown as MongoQuery<any>;
++  }
++
++  maybeSingle(): MongoQuery<any | null> {
++    this.singleResult = true;
++    this.optionalSingleResult = true;
++    return this as unknown as MongoQuery<any | null>;
+   }
+-  return supabaseInstance;
++
++  insert(values: MongoDocument | MongoDocument[]): this {
++    this.operation = "insert";
++    this.payload = values;
++    return this;
++  }
++
++  update(values: MongoDocument): this {
++    this.operation = "update";
++    this.payload = values;
++    return this;
++  }
++
++  delete(): this {
++    this.operation = "delete";
++    this.payload = {};
++    return this;
++  }
++
++  upsert(
++    values: MongoDocument | MongoDocument[],
++    options: { onConflict?: string; ignoreDuplicates?: boolean } = {}
++  ): this {
++    this.operation = "upsert";
++    this.payload = values;
++    this.conflictFields = options.onConflict?.split(",").map((field) => field.trim()) ?? [];
++    this.ignoreDuplicates = options.ignoreDuplicates ?? false;
++    return this;
++  }
++
++  private getFilter(): Filter<MongoDocument> {
++    if (this.filters.length === 0) return {};
++    if (this.filters.length === 1) return this.filters[0];
++    return { $and: this.filters };
++  }
++
++  private async findSelected(
++    db: Db,
++    filter: Filter<MongoDocument>,
++    ids?: ObjectId[]
++  ): Promise<MongoDocument[]> {
++    const collection = db.collection<MongoDocument>(this.collectionName);
++    const projection = selectionProjection(this.selection);
++    const queryFilter = ids ? { _id: { $in: ids } } : filter;
++    let cursor = collection.find(queryFilter, projection ? { projection } : {});
++    if (Object.keys(this.sort).length > 0) cursor = cursor.sort(this.sort);
++    if (this.offset > 0) cursor = cursor.skip(this.offset);
++    if (this.maxResults !== undefined) cursor = cursor.limit(this.maxResults);
++
++    const documents = await cursor.toArray();
++    const relations = relationSelection(this.selection);
++    const relatedDocuments = await Promise.all(
++      documents.map(async (document) => {
++        const result = stripMongoId(document);
++        for (const relation of relations) {
++          const foreignId = document[relation.foreignKey];
++          const related = foreignId
++            ? await db
++                .collection<MongoDocument>(relation.collection)
++                .findOne(
++                  { id: foreignId },
++                  { projection: selectionProjection(relation.fields) }
++                )
++            : null;
++          result[relation.alias] = related ? stripMongoId(related) : null;
++          if (!splitSelection(this.selection).includes(relation.foreignKey)) {
++            delete result[relation.foreignKey];
++          }
++        }
++        return result;
++      })
++    );
++    return relatedDocuments;
++  }
++
++  private async performUpsert(db: Db, filter: Filter<MongoDocument>) {
++    const collection = db.collection<MongoDocument>(this.collectionName);
++    const inputs = Array.isArray(this.payload) ? this.payload : [this.payload];
++    const results: MongoDocument[] = [];
++
++    for (const input of inputs) {
++      const document = addDefaults(this.collectionName, input);
++      const conflictFilter = this.conflictFields.length > 0
++        ? Object.fromEntries(this.conflictFields.map((field) => [field, document[field]]))
++        : filter;
++      if (Object.keys(conflictFilter).length === 0) {
++        throw new Error(`MongoDB upsert requires conflict fields for ${this.collectionName}.`);
++      }
++
++      const defaults = addDefaults(this.collectionName, {});
++      const insertOnlyFields = Object.fromEntries(
++        Object.entries(defaults).filter(([field]) => !(field in input))
++      );
++      await collection.updateOne(
++        conflictFilter,
++        this.ignoreDuplicates
++          ? { $setOnInsert: document }
++          : { $set: input, $setOnInsert: insertOnlyFields },
++        { upsert: true }
++      );
++      const saved = await collection.findOne(conflictFilter);
++      if (saved) results.push(saved);
++    }
++
++    return results;
++  }
++
++  private async executeQuery(): Promise<DatabaseResult<T>> {
++    try {
++      const db = await getMongoDatabase();
++      const collection = db.collection<MongoDocument>(this.collectionName);
++      const filter = this.getFilter();
++      const shouldReturnData = this.operation === "find" || this.returningData;
++      let data: MongoDocument[] | null = null;
++      let count: number | null = null;
++
++      if (this.selectionOptions.count) {
++        count = await collection.countDocuments(filter);
++      }
++
++      if (this.operation === "find") {
++        if (this.selectionOptions.head) {
++          data = null;
++        } else {
++          data = await this.findSelected(db, filter);
++        }
++      } else if (this.operation === "insert") {
++        const inputs = Array.isArray(this.payload) ? this.payload : [this.payload];
++        const documents = inputs.map((input) => addDefaults(this.collectionName, input));
++        if (documents.length > 0) {
++          await collection.insertMany(documents);
++          if (shouldReturnData) {
++            data = await this.findSelected(
++              db,
++              { id: { $in: documents.map((document) => document.id).filter(Boolean) } }
++            );
++          }
++        } else if (shouldReturnData) {
++          data = [];
++        }
++      } else if (this.operation === "upsert") {
++        const saved = await this.performUpsert(db, filter);
++        if (shouldReturnData) {
++          data = await this.findSelected(
++            db,
++            filter,
++            saved.map((document) => document._id)
++          );
++        }
++      } else if (this.operation === "update") {
++        let matchedIds: ObjectId[] | undefined;
++        if (shouldReturnData) {
++          matchedIds = (await collection.find(filter, { projection: { _id: 1 } }).toArray()).map(
++            (document) => document._id
++          );
++        }
++        if (Object.keys(this.payload).length > 0) {
++          await collection.updateMany(filter, {
++            $set: {
++              ...this.payload,
++              ...(this.collectionName === "bug_reports" ||
++              this.collectionName === "password_reset_tokens" ||
++              this.collectionName === "reports" ||
++              this.collectionName === "reclamations" ||
++              this.collectionName === "forum_messages"
++                ? { updated_at: new Date().toISOString() }
++                : {}),
++            },
++          });
++        }
++        if (shouldReturnData) data = await this.findSelected(db, filter, matchedIds);
++      } else if (this.operation === "delete") {
++        const documents = shouldReturnData ? await collection.find(filter).toArray() : [];
++        await deleteRelatedDocuments(db, this.collectionName, documents);
++        await collection.deleteMany(filter);
++        if (shouldReturnData) {
++          data = await Promise.all(
++            documents.map(async (document) => {
++              const relations = relationSelection(this.selection);
++              const result = projectSelectedFields(document, this.selection);
++              for (const relation of relations) {
++                const foreignId = document[relation.foreignKey];
++                const related = foreignId
++                  ? await db
++                      .collection<MongoDocument>(relation.collection)
++                      .findOne(
++                        { id: foreignId },
++                        { projection: selectionProjection(relation.fields) }
++                      )
++                  : null;
++                result[relation.alias] = related ? stripMongoId(related) : null;
++              }
++              return result;
++            })
++          );
++        }
++      }
++
++      if (this.singleResult) {
++        const documents = data ?? [];
++        if (documents.length !== 1) {
++          if (documents.length === 0 && this.optionalSingleResult) {
++            return { data: null as T, error: null, count };
++          }
++          return {
++            data: null,
++            error: Object.assign(
++              new Error(
++                documents.length === 0
++                  ? "No rows returned."
++                  : "Multiple rows returned for a single-document query."
++              ),
++              { code: "PGRST116" }
++            ),
++            count,
++          };
++        }
++        return { data: documents[0] as T, error: null, count };
++      }
++
++      return {
++        data: (
++          this.selectionOptions.head || !shouldReturnData ? null : (data ?? [])
++        ) as T,
++        error: null,
++        count,
++      };
++    } catch (error) {
++      return errorResult<T>(error);
++    }
++  }
++
++  private execute(): Promise<DatabaseResult<T>> {
++    this.execution ??= this.executeQuery();
++    return this.execution;
++  }
++
++  then<TResult1 = DatabaseResult<T>, TResult2 = never>(
++    onfulfilled?: ((value: DatabaseResult<T>) => TResult1 | PromiseLike<TResult1>) | null,
++    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
++  ): PromiseLike<TResult1 | TResult2> {
++    return this.execute().then(onfulfilled ?? undefined, onrejected ?? undefined);
++  }
++}
++
++async function countByField(collectionName: string, field: string, limit?: number) {
++  const db = await getMongoDatabase();
++  const counts = await db
++    .collection(collectionName)
++    .aggregate<{ _id: string; count: number }>([
++      { $group: { _id: `$${field}`, count: { $sum: 1 } } },
++      { $sort: { ...(field === "reason" ? { count: -1 } : { _id: 1 }) } },
++      ...(limit ? [{ $limit: limit }] : []),
++    ])
++    .toArray();
++  return counts.map(({ _id, count }) => ({ [field]: _id, count }));
+ }
+ 
+-export const supabase = getSupabaseClient();
++function removeDiacritics(value: string): string {
++  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
++}
++
++export const database = {
++  collection<T = any>(name: string): MongoQuery<T[]> {
++    return new MongoQuery<T[]>(name);
++  },
++
++  async rpc(
++    name: string,
++    args: Record<string, unknown> = {}
++  ): Promise<DatabaseResult<any[]>> {
++    try {
++      if (name.startsWith("count_reports_by_")) {
++        const field = name.slice("count_reports_by_".length);
++        if (["type", "status", "reason"].includes(field)) {
++          return {
++            data: await countByField("reports", field === "type" ? "report_type" : field, field === "reason" ? 10 : undefined),
++            error: null,
++            count: null,
++          };
++        }
++      }
++      if (name === "count_bug_reports_by_severity" || name === "count_bug_reports_by_status") {
++        const field = name.endsWith("_severity") ? "severity" : "status";
++        return { data: await countByField("bug_reports", field), error: null, count: null };
++      }
++      if (name === "get_approved_reviews") {
++        const db = await getMongoDatabase();
++        const reviews = await db
++          .collection("reviews")
++          .find({ is_approved: true })
++          .sort({ created_at: -1 })
++          .project({ id: 1, reviewer_name: 1, review: 1, rating: 1, created_at: 1, _id: 0 })
++          .toArray();
++        return {
++          data: reviews.map(({ reviewer_name, ...review }) => ({
++            ...review,
++            user_name: reviewer_name,
++          })),
++          error: null,
++          count: null,
++        };
++      }
++      if (name === "search_users_with_unaccent") {
++        const db = await getMongoDatabase();
++        const searchQuery = removeDiacritics(String(args.search_query ?? ""));
++        const currentUserId = args.current_user_id;
++        const limit = Number(args.limit_count ?? 7);
++        const users = await db
++          .collection("users")
++          .find({ id: { $ne: currentUserId } })
++          .project({ id: 1, name: 1, phone: 1, _id: 0 })
++          .toArray();
++        const matches = users
++          .filter(
++            (user) =>
++              removeDiacritics(String(user.name ?? "")).includes(searchQuery) ||
++              removeDiacritics(String(user.phone ?? "")).includes(searchQuery)
++          )
++          .slice(0, limit);
++        return { data: matches, error: null, count: null };
++      }
++      throw new Error(`Unsupported MongoDB operation: ${name}`);
++    } catch (error) {
++      return errorResult<any[]>(error);
++    }
++  },
++};
+diff --git a/src/lib/pushNotificationService.ts b/src/lib/pushNotificationService.ts
+index 76335de..5391388 100644
+--- a/src/lib/pushNotificationService.ts
++++ b/src/lib/pushNotificationService.ts
+@@ -1,6 +1,6 @@
+ import webpush, { sendNotification, setVapidDetails, WebPushError } from "web-push";
+ 
+-import { supabase } from "./db";
++import { database } from "./db";
+ 
+ const vapidKeys = {
+   publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+@@ -32,8 +32,8 @@ export async function sendImmediateNotification(userId: string, title: string, b
+   const oneWeekAgo = new Date();
+   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+ 
+-  const { data: subscriptionData, error: subscriptionError } = await supabase
+-    .from("push_subscriptions")
++  const { data: subscriptionData, error: subscriptionError } = await database
++    .collection("push_subscriptions")
+     .select("id, subscription, enabled, last_used")
+     .eq("user_id", userId)
+     .eq("enabled", true)
+@@ -59,7 +59,7 @@ export async function sendImmediateNotification(userId: string, title: string, b
+ 
+     // Remove expired subscriptions
+     if (expiredSubscriptions.length > 0) {
+-      await supabase.from("push_subscriptions").delete().in("id", expiredSubscriptions);
++      await database.collection("push_subscriptions").delete().in("id", expiredSubscriptions);
+     }
+   }
+ }
+-- 
+2.53.0
+
